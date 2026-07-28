@@ -106,9 +106,16 @@ const EMPTY: ProfileForm = {
         <p class="muted hint">Comma-separated. Used for ranking when a CV has not been parsed.</p>
       </div>
 
-      <button class="btn" type="submit" [disabled]="busy()">
-        {{ busy() ? 'Saving…' : 'Create search profile' }}
-      </button>
+      <div class="form-actions">
+        <button class="btn" type="submit" [disabled]="busy()">
+          {{ busy() ? 'Saving…' : editingId() ? 'Save changes' : 'Create search profile' }}
+        </button>
+        @if (editingId()) {
+          <button class="btn btn--ghost" type="button" [disabled]="busy()" (click)="cancelEdit()">
+            Cancel
+          </button>
+        }
+      </div>
     </form>
 
     @if (!profiles().length) {
@@ -132,6 +139,7 @@ const EMPTY: ProfileForm = {
                 </p>
               </div>
               <div class="actions">
+                <button class="btn btn--ghost" type="button" (click)="edit(profile)">Edit</button>
                 <button class="btn btn--ghost" type="button" (click)="toggle(profile)">
                   {{ profile.active ? 'Pause' : 'Resume' }}
                 </button>
@@ -168,6 +176,11 @@ const EMPTY: ProfileForm = {
     .hint {
       font-size: 0.78rem;
       margin: 0;
+    }
+    .form-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
     }
     .list {
       list-style: none;
@@ -244,6 +257,9 @@ export class SearchProfiles {
   protected readonly message = signal<string | null>(null);
   protected readonly messageIsOk = signal(false);
 
+  /** Null while creating; the profile id being edited otherwise. */
+  protected readonly editingId = signal<string | null>(null);
+
   constructor() {
     void this.load();
   }
@@ -273,18 +289,26 @@ export class SearchProfiles {
         // input — clamp here instead of rejecting a negative outright.
         const parsedSalary = Number.parseInt(value.minSalary, 10);
         const salary = Number.isFinite(parsedSalary) ? Math.max(0, parsedSalary) : Number.NaN;
+        const input = {
+          title: value.title.trim(),
+          location: value.location.trim() || null,
+          work_mode: value.workMode,
+          country: value.country,
+          min_salary: Number.isFinite(salary) ? salary : null,
+          keywords: SearchProfileService.parseKeywords(value.keywords),
+          cv_id: value.cvId || null,
+        };
+
         try {
-          await this.service.create({
-            title: value.title.trim(),
-            location: value.location.trim() || null,
-            work_mode: value.workMode,
-            country: value.country,
-            min_salary: Number.isFinite(salary) ? salary : null,
-            keywords: SearchProfileService.parseKeywords(value.keywords),
-            cv_id: value.cvId || null,
-          });
-          this.model.set({ ...EMPTY });
-          this.ok('Search profile created.');
+          const editing = this.editingId();
+          if (editing) {
+            await this.service.update(editing, input);
+            this.ok('Search profile updated.');
+          } else {
+            await this.service.create(input);
+            this.ok('Search profile created.');
+          }
+          this.cancelEdit();
         } catch (error) {
           this.fail(error);
         }
@@ -292,6 +316,25 @@ export class SearchProfiles {
     });
 
     this.busy.set(false);
+  }
+
+  protected edit(profile: SearchProfile): void {
+    this.editingId.set(profile.id);
+    this.model.set({
+      title: profile.title,
+      location: profile.location ?? '',
+      workMode: profile.work_mode,
+      country: profile.country,
+      minSalary: profile.min_salary?.toString() ?? '',
+      keywords: profile.keywords.join(', '),
+      cvId: profile.cv_id ?? '',
+    });
+    document.getElementById('title')?.focus();
+  }
+
+  protected cancelEdit(): void {
+    this.editingId.set(null);
+    this.model.set({ ...EMPTY });
   }
 
   protected async toggle(profile: SearchProfile): Promise<void> {

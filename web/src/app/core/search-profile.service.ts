@@ -3,6 +3,17 @@ import { computed, inject, Service, signal } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 
 const ACTIVE_KEY = 'jobpilot.active-search-profile';
+const HISTORY_KEY = 'jobpilot.search-history';
+const HISTORY_LIMIT = 12;
+
+function readHistory(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]');
+    return Array.isArray(raw) ? raw.filter((t): t is string => typeof t === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 export type WorkMode = 'remote' | 'hybrid' | 'onsite' | 'any';
 
@@ -83,6 +94,66 @@ export class SearchProfileService {
     this.selectedId.set(id);
     if (id) localStorage.setItem(ACTIVE_KEY, id);
     else localStorage.removeItem(ACTIVE_KEY);
+  }
+
+  /** Recently typed searches, most recent first. */
+  private readonly typedHistory = signal<string[]>(readHistory());
+
+  /** What the quick-search dropdown offers: past terms, then saved searches. */
+  readonly suggestions = computed(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const term of [...this.typedHistory(), ...this.items().map((p) => p.title)]) {
+      const key = term.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(term.trim());
+    }
+    return out;
+  });
+
+  rememberTerm(term: string): void {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    const next = [trimmed, ...this.typedHistory().filter((t) => t.toLowerCase() !== trimmed.toLowerCase())]
+      .slice(0, HISTORY_LIMIT);
+    this.typedHistory.set(next);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  }
+
+  clearHistory(): void {
+    this.typedHistory.set([]);
+    localStorage.removeItem(HISTORY_KEY);
+  }
+
+  /**
+   * Backs the quick search: reuses a saved search with the same title rather
+   * than piling up duplicates, and otherwise creates one that inherits the
+   * current search's country and work mode so a one-word search still returns
+   * relevant postings.
+   */
+  async findOrCreateByTitle(title: string): Promise<{ profile: SearchProfile; created: boolean }> {
+    const trimmed = title.trim();
+    if (!trimmed) throw new Error('Enter a job title to search for.');
+
+    const match = (p: SearchProfile) => p.title.trim().toLowerCase() === trimmed.toLowerCase();
+    const existing = this.items().find(match);
+    if (existing) return { profile: existing, created: false };
+
+    const base = this.active();
+    await this.create({
+      title: trimmed,
+      location: base?.location ?? null,
+      work_mode: base?.work_mode ?? 'any',
+      country: base?.country ?? 'us',
+      min_salary: null,
+      keywords: [],
+      cv_id: base?.cv_id ?? null,
+    });
+
+    const created = this.items().find(match);
+    if (!created) throw new Error('Could not create that search.');
+    return { profile: created, created: true };
   }
 
   async reload(): Promise<void> {

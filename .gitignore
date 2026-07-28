@@ -1,4 +1,6 @@
 .env
+# Holds API keys for MCP servers — never commit.
+.vscode/mcp.json
 app/.dart_tool/
 app/build/
 app/.flutter-plugins*

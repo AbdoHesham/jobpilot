@@ -3,10 +3,11 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 
 import { SearchProfileService } from '../../core/search-profile.service';
 import { SupabaseService } from '../../core/supabase.service';
+import { QuickSearch } from './quick-search';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [QuickSearch, RouterLink, RouterLinkActive, RouterOutlet],
   template: `
     <a class="skip" href="#main">Skip to content</a>
 
@@ -17,6 +18,8 @@ import { SupabaseService } from '../../core/supabase.service';
         <a routerLink="/searches" routerLinkActive="active">Searches</a>
         <a routerLink="/cvs" routerLinkActive="active">CVs</a>
       </nav>
+      <app-quick-search />
+
       <div class="right">
         @if (searchProfiles.profiles().length) {
           <label class="sr-only" for="active-search">Active search</label>
@@ -73,7 +76,11 @@ import { SupabaseService } from '../../core/supabase.service';
     nav {
       display: flex;
       gap: 0.35rem;
+    }
+    app-quick-search {
       flex: 1;
+      min-width: 10rem;
+      display: block;
     }
     nav a {
       padding: 0.35rem 0.7rem;
