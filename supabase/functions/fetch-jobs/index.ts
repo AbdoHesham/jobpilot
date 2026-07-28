@@ -6,6 +6,7 @@ interface SearchProfileRow {
   title: string;
   location: string | null;
   work_mode: SearchCriteria['work_mode'];
+  date_posted: SearchCriteria['date_posted'];
   country: string;
   keywords: string[];
   cvs: { parsed_json: { skills?: string[] } | null } | null;
@@ -26,7 +27,7 @@ Deno.serve(serve(async (req, db) => {
 
   let query = db
     .from('search_profiles')
-    .select('id, title, location, work_mode, country, keywords, cvs(parsed_json)')
+    .select('id, title, location, work_mode, country, date_posted, keywords, cvs(parsed_json)')
     .eq('active', true);
   if (onlyProfileId) query = query.eq('id', onlyProfileId);
 
@@ -43,6 +44,7 @@ Deno.serve(serve(async (req, db) => {
         location: profile.location,
         work_mode: profile.work_mode,
         country: profile.country,
+        date_posted: profile.date_posted,
       },
       apiKey,
     );
@@ -62,6 +64,7 @@ Deno.serve(serve(async (req, db) => {
       salary_text: job.salary_text,
       description: job.description,
       apply_url: job.apply_url,
+      posted_at: job.posted_at,
       match_score: matchScore(job, terms),
     }));
 

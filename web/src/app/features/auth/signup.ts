@@ -96,8 +96,8 @@ interface Registration {
       padding: 1.75rem;
     }
     .confirm {
-      border-color: var(--success);
-      color: var(--success);
+      border-color: var(--ok);
+      color: var(--ok);
     }
     .switch {
       margin: 1.25rem 0 0;

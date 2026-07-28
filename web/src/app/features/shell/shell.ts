@@ -12,7 +12,9 @@ import { QuickSearch } from './quick-search';
     <a class="skip" href="#main">Skip to content</a>
 
     <header class="bar">
-      <strong class="brand">JobPilot</strong>
+      <a class="brand" routerLink="/jobs" aria-label="JobPilot home">
+        <span class="brand-mark" aria-hidden="true"></span>JobPilot
+      </a>
       <nav aria-label="Main">
         <a routerLink="/jobs" routerLinkActive="active">Jobs</a>
         <a routerLink="/searches" routerLinkActive="active">Searches</a>
@@ -56,26 +58,42 @@ import { QuickSearch } from './quick-search';
       left: 1rem;
       top: 1rem;
       z-index: 10;
-      background: var(--surface);
+      background: var(--card);
       padding: 0.5rem 0.75rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border: 1px solid var(--rule);
     }
     .bar {
       display: flex;
       align-items: center;
       gap: 1.25rem;
       padding: 0.7rem 1.25rem;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      border-bottom: 1px solid var(--rule);
+      background: var(--card);
       flex-wrap: wrap;
     }
     .brand {
-      font-size: 1.05rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    /* Amber pip — the one piece of instrument lighting in the chrome. */
+    .brand-mark {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--signal);
+      box-shadow: 0 0 0 3px var(--signal-wash);
     }
     nav {
       display: flex;
-      gap: 0.35rem;
+      gap: 0.1rem;
     }
     app-quick-search {
       flex: 1;
@@ -83,15 +101,19 @@ import { QuickSearch } from './quick-search';
       display: block;
     }
     nav a {
-      padding: 0.35rem 0.7rem;
-      border-radius: 8px;
+      padding: 0.3rem 0.65rem;
       text-decoration: none;
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.9rem;
+      border-bottom: 2px solid transparent;
+    }
+    nav a:hover {
+      color: var(--ink);
     }
     nav a.active {
-      color: var(--text);
-      background: var(--bg);
+      color: var(--ink);
+      border-bottom-color: var(--signal);
+      font-weight: 500;
     }
     .right {
       display: flex;
@@ -106,10 +128,10 @@ import { QuickSearch } from './quick-search';
       font-size: 0.88rem;
       padding: 0.35rem 0.5rem;
       max-width: 15rem;
-      color: var(--text);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
     }
     .sr-only {
       position: absolute;

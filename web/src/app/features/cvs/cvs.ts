@@ -132,7 +132,7 @@ import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
     .chip {
       font-size: 0.78rem;
       padding: 0.15rem 0.55rem;
-      border: 1px solid var(--border);
+      border: 1px solid var(--rule);
       border-radius: 999px;
       color: var(--muted);
     }
@@ -156,13 +156,13 @@ import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
     .skeleton {
       height: 92px;
       margin-bottom: 1rem;
-      background: linear-gradient(90deg, var(--surface), var(--border), var(--surface));
+      background: linear-gradient(90deg, var(--card), var(--rule), var(--card));
       background-size: 200% 100%;
       animation: shimmer 1.2s linear infinite;
     }
     .banner.ok {
-      border-color: var(--success);
-      color: var(--success);
+      border-color: var(--ok);
+      color: var(--ok);
     }
     @keyframes shimmer {
       to {

@@ -4,8 +4,10 @@ import { form, FormField, FormRoot, required, submit } from '@angular/forms/sign
 import { CvService } from '../../core/cv.service';
 import {
   COUNTRIES,
+  DATE_WINDOWS,
   SearchProfileService,
   WORK_MODES,
+  type DatePosted,
   type SearchProfile,
   type WorkMode,
 } from '../../core/search-profile.service';
@@ -15,6 +17,7 @@ interface ProfileForm {
   location: string;
   workMode: WorkMode;
   country: string;
+  datePosted: DatePosted;
   minSalary: string;
   keywords: string;
   cvId: string;
@@ -25,6 +28,7 @@ const EMPTY: ProfileForm = {
   location: '',
   workMode: 'any',
   country: 'us',
+  datePosted: 'week',
   minSalary: '',
   keywords: '',
   cvId: '',
@@ -84,8 +88,23 @@ const EMPTY: ProfileForm = {
           </select>
         </div>
         <div class="field">
+          <label for="datePosted">Posted within</label>
+          <select id="datePosted" [formField]="fields.datePosted">
+            @for (window of dateWindows; track window.value) {
+              <option [value]="window.value">{{ window.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
           <label for="minSalary">Minimum salary</label>
           <input id="minSalary" type="number" step="1000" placeholder="Optional" [formField]="fields.minSalary" />
+        </div>
+        <div class="field">
+          <label for="keywords">Keywords</label>
+          <input id="keywords" type="text" placeholder="react, typescript" [formField]="fields.keywords" />
         </div>
       </div>
 
@@ -98,12 +117,6 @@ const EMPTY: ProfileForm = {
           }
         </select>
         <p class="muted hint">Its parsed skills drive match scores; keywords are the fallback.</p>
-      </div>
-
-      <div class="field">
-        <label for="keywords">Keywords</label>
-        <input id="keywords" type="text" placeholder="react, typescript, graphql" [formField]="fields.keywords" />
-        <p class="muted hint">Comma-separated. Used for ranking when a CV has not been parsed.</p>
       </div>
 
       <div class="form-actions">
@@ -130,9 +143,9 @@ const EMPTY: ProfileForm = {
             <div class="head">
               <div>
                 <h2>{{ profile.title }}</h2>
-                <p class="muted meta">
+                <p class="muted meta mono">
                   {{ profile.location || 'Anywhere' }} · {{ profile.country.toUpperCase() }} ·
-                  {{ profile.work_mode }}
+                  {{ profile.work_mode }} · {{ windowLabel(profile.date_posted) }}
                   @if (profile.min_salary) {
                     · from {{ profile.min_salary }}
                   }
@@ -226,7 +239,7 @@ const EMPTY: ProfileForm = {
     .chip {
       font-size: 0.78rem;
       padding: 0.15rem 0.55rem;
-      border: 1px solid var(--border);
+      border: 1px solid var(--rule);
       border-radius: 999px;
       color: var(--muted);
     }
@@ -235,8 +248,8 @@ const EMPTY: ProfileForm = {
       text-align: center;
     }
     .banner.ok {
-      border-color: var(--success);
-      color: var(--success);
+      border-color: var(--ok);
+      color: var(--ok);
     }
   `,
 })
@@ -246,6 +259,7 @@ export class SearchProfiles {
 
   protected readonly workModes = WORK_MODES;
   protected readonly countries = COUNTRIES;
+  protected readonly dateWindows = DATE_WINDOWS;
   protected readonly profiles = this.service.profiles;
 
   protected readonly model = signal<ProfileForm>({ ...EMPTY });
@@ -294,6 +308,7 @@ export class SearchProfiles {
           location: value.location.trim() || null,
           work_mode: value.workMode,
           country: value.country,
+          date_posted: value.datePosted,
           min_salary: Number.isFinite(salary) ? salary : null,
           keywords: SearchProfileService.parseKeywords(value.keywords),
           cv_id: value.cvId || null,
@@ -318,6 +333,10 @@ export class SearchProfiles {
     this.busy.set(false);
   }
 
+  protected windowLabel(value: string): string {
+    return this.dateWindows.find((w) => w.value === value)?.label.toLowerCase() ?? value;
+  }
+
   protected edit(profile: SearchProfile): void {
     this.editingId.set(profile.id);
     this.model.set({
@@ -325,6 +344,7 @@ export class SearchProfiles {
       location: profile.location ?? '',
       workMode: profile.work_mode,
       country: profile.country,
+      datePosted: profile.date_posted,
       minSalary: profile.min_salary?.toString() ?? '',
       keywords: profile.keywords.join(', '),
       cvId: profile.cv_id ?? '',

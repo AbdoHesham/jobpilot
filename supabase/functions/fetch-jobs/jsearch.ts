@@ -6,6 +6,8 @@
  * `data` array) and requires a `country` code.
  */
 
+export type DatePosted = 'all' | 'today' | '3days' | 'week' | 'month';
+
 export interface FetchedJob {
   external_id: string;
   title: string;
@@ -15,6 +17,7 @@ export interface FetchedJob {
   description: string | null;
   apply_url: string | null;
   publisher: string | null;
+  posted_at: string | null;
 }
 
 export interface SearchCriteria {
@@ -22,6 +25,7 @@ export interface SearchCriteria {
   location: string | null;
   work_mode: 'remote' | 'hybrid' | 'onsite' | 'any';
   country: string;
+  date_posted: DatePosted;
 }
 
 interface JSearchJob {
@@ -41,6 +45,20 @@ interface JSearchJob {
   job_max_salary?: number;
   job_salary_currency?: string;
   job_salary_period?: string;
+  job_posted_at_datetime_utc?: string;
+  job_posted_at_timestamp?: number;
+}
+
+/** Provider gives an ISO string on most rows and a unix timestamp on some. */
+export function postedAt(job: JSearchJob): string | null {
+  if (job.job_posted_at_datetime_utc) {
+    const parsed = new Date(job.job_posted_at_datetime_utc);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  if (typeof job.job_posted_at_timestamp === 'number' && job.job_posted_at_timestamp > 0) {
+    return new Date(job.job_posted_at_timestamp * 1000).toISOString();
+  }
+  return null;
 }
 
 export function buildQuery(criteria: SearchCriteria): string {
@@ -90,7 +108,7 @@ export async function fetchJobs(
   url.searchParams.set('query', buildQuery(criteria));
   url.searchParams.set('country', criteria.country || 'us');
   url.searchParams.set('num_pages', String(pages));
-  url.searchParams.set('date_posted', 'all');
+  url.searchParams.set('date_posted', criteria.date_posted || 'all');
 
   const response = await fetch(url, {
     headers: {
@@ -120,5 +138,6 @@ export async function fetchJobs(
       description: job.job_description?.slice(0, 8000) ?? null,
       apply_url: job.job_apply_link ?? null,
       publisher: job.job_publisher ?? null,
+      posted_at: postedAt(job),
     }));
 }

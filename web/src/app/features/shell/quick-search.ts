@@ -46,10 +46,10 @@ import { SearchProfileService } from '../../core/search-profile.service';
       font-size: 0.88rem;
       padding: 0.35rem 0.6rem;
       min-width: 12rem;
-      color: var(--text);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
     }
     .btn {
       padding: 0.35rem 0.8rem;

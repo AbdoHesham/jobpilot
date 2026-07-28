@@ -17,11 +17,12 @@ export interface Job {
   apply_url: string | null;
   match_score: number;
   status: JobStatus;
+  posted_at: string | null;
   fetched_at: string;
 }
 
 const COLUMNS =
-  'id, search_profile_id, source, publisher, title, company_name, location, salary_text, description, apply_url, match_score, status, fetched_at';
+  'id, search_profile_id, source, publisher, title, company_name, location, salary_text, description, apply_url, match_score, status, posted_at, fetched_at';
 
 @Service()
 export class JobService {

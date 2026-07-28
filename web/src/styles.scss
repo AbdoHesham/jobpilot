@@ -1,28 +1,51 @@
+/* JobPilot — instrument panel.
+   Job hunting is high-volume triage, so the interface is a board you scan, not
+   a page you read. Navy ink, cool paper, and a single amber signal borrowed
+   from cockpit instrument lighting. Data (times, percentages, counts) is set in
+   mono so it reads as instrumentation and stays column-aligned. */
+
 :root {
-  --bg: #f7f8fa;
-  --surface: #ffffff;
-  --border: #e2e5ea;
-  --text: #16181d;
-  --muted: #646b7a;
-  --accent: #2f5bea;
-  --accent-text: #ffffff;
-  --danger: #c0362c;
-  --success: #1f7a4d;
-  --radius: 10px;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 10%);
+  color-scheme: light dark;
+
+  --paper: #eceef3;
+  --card: #ffffff;
+  --ink: #121826;
+  --muted: #5b657a;
+  --rule: #d5dae4;
+  --rail: #e4e8ef;
+
+  /* Amber carries every interactive affordance. AA on both surfaces. */
+  --signal: #b45309;
+  --signal-ink: #ffffff;
+  --signal-wash: #fdf3e6;
+
+  --ok: #15703f;
+  --danger: #b3261e;
+
+  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  --radius: 6px;
+  --gutter: 1.25rem;
+  --shadow: 0 1px 2px rgb(18 24 38 / 5%), 0 2px 8px rgb(18 24 38 / 6%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #101216;
-    --surface: #181b21;
-    --border: #2a2f39;
-    --text: #eceef2;
-    --muted: #9aa3b2;
-    --accent: #6c8cff;
-    --accent-text: #0b0d11;
-    --danger: #ef7a70;
-    --success: #5fd39b;
+    --paper: #0b0f18;
+    --card: #131a26;
+    --ink: #e7ecf5;
+    --muted: #94a0b5;
+    --rule: #222c3c;
+    --rail: #1b2432;
+
+    --signal: #f0a92e;
+    --signal-ink: #1a1204;
+    --signal-wash: #221a0c;
+
+    --ok: #4ec98a;
+    --danger: #f08a80;
+
     --shadow: none;
   }
 }
@@ -39,107 +62,212 @@ body {
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
 h2,
 h3 {
-  line-height: 1.25;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.4rem;
+  line-height: 1.15;
+  letter-spacing: -0.018em;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+h2 {
+  font-size: 1.05rem;
 }
 
 a {
-  color: var(--accent);
+  color: var(--signal);
+  text-underline-offset: 2px;
 }
 
-/* Visible focus everywhere — WCAG 2.4.7. */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--signal);
   outline-offset: 2px;
+  border-radius: 3px;
 }
 
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
-.field {
-  display: grid;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-.field label {
-  font-size: 0.85rem;
+/* Uppercase tracked label. Used for section and column headings, where it acts
+   as the board's column captions rather than decoration. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--muted);
-  font-weight: 500;
 }
 
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  padding: 0.6rem 0.7rem;
-  font: inherit;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.field input[aria-invalid='true'] {
-  border-color: var(--danger);
-}
-
-.error {
-  color: var(--danger);
-  font-size: 0.82rem;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  padding: 0.65rem 1rem;
-  font: inherit;
-  font-weight: 500;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  background: var(--accent);
-  color: var(--accent-text);
-}
-
-.btn[disabled] {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.btn--ghost {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border);
-}
-
-.btn--block {
-  width: 100%;
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .muted {
   color: var(--muted);
 }
 
-.banner {
-  padding: 0.6rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  border: 1px solid var(--danger);
+.card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ── Forms ───────────────────────────────────────────────────────────────── */
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.field > label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+input:hover,
+select:hover {
+  border-color: var(--muted);
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.error {
   color: var(--danger);
+  font-size: 0.8rem;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.95rem;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  border: 1px solid var(--signal);
+  border-radius: var(--radius);
+  background: var(--signal);
+  color: var(--signal-ink);
+  cursor: pointer;
+  text-decoration: none;
+  transition: filter 120ms ease;
+}
+
+.btn:hover:not([disabled]) {
+  filter: brightness(1.08);
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+.btn--ghost:hover:not([disabled]) {
+  border-color: var(--muted);
+  filter: none;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+/* ── Feedback ────────────────────────────────────────────────────────────── */
+
+.banner {
+  padding: 0.6rem 0.8rem;
   margin-bottom: 1rem;
+  border-radius: var(--radius);
+  border-left: 3px solid var(--danger);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.banner.ok {
+  border-left-color: var(--ok);
+}
+
+.empty {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.empty h2 {
+  margin-bottom: 0.35rem;
+}
+
+/* Loading rows echo the board's row rhythm rather than generic grey blocks. */
+.skeleton {
+  height: 84px;
+  margin-bottom: 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+  background: linear-gradient(90deg, var(--card) 30%, var(--rail) 50%, var(--card) 70%);
+  background-size: 220% 100%;
+  animation: sweep 1.4s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

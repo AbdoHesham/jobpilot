@@ -1,16 +1,26 @@
 // deno test --allow-net supabase/functions/fetch-jobs/jsearch_test.ts
 import { assertEquals, assertRejects, assertStringIncludes } from 'jsr:@std/assert@1';
-import { buildQuery, fetchJobs, formatLocation, formatSalary, matchScore } from './jsearch.ts';
+import {
+  buildQuery,
+  fetchJobs,
+  formatLocation,
+  formatSalary,
+  matchScore,
+  postedAt,
+  type FetchedJob,
+  type SearchCriteria,
+} from './jsearch.ts';
 
-const criteria = (over = {}) => ({
+const criteria = (over: Partial<SearchCriteria> = {}): SearchCriteria => ({
   title: 'Dev',
   location: null,
-  work_mode: 'any' as const,
+  work_mode: 'any',
   country: 'us',
+  date_posted: 'week',
   ...over,
 });
 
-const job = (over: Partial<Parameters<typeof matchScore>[0]> = {}) => ({
+const job = (over: Partial<FetchedJob> = {}): FetchedJob => ({
   external_id: '1',
   title: 'Senior Frontend Developer',
   company_name: 'Acme',
@@ -19,6 +29,7 @@ const job = (over: Partial<Parameters<typeof matchScore>[0]> = {}) => ({
   description: 'We use React and TypeScript with a GraphQL API.',
   apply_url: 'https://example.com',
   publisher: 'LinkedIn',
+  posted_at: null,
   ...over,
 });
 
@@ -166,6 +177,23 @@ Deno.test('fetchJobs surfaces an API error rather than returning nothing', async
   const stub = stubFetch({ message: 'quota exceeded' }, 429);
   try {
     await assertRejects(() => fetchJobs(criteria(), 'key'), Error, '429');
+  } finally {
+    stub.restore();
+  }
+});
+
+Deno.test('postedAt prefers the ISO field, falls back to the unix timestamp', () => {
+  assertEquals(postedAt({ job_posted_at_datetime_utc: '2026-07-26T00:00:00.000Z' }), '2026-07-26T00:00:00.000Z');
+  assertEquals(postedAt({ job_posted_at_timestamp: 1785024000 }), new Date(1785024000000).toISOString());
+  assertEquals(postedAt({ job_posted_at_datetime_utc: 'not a date', job_posted_at_timestamp: 1785024000 }), new Date(1785024000000).toISOString());
+  assertEquals(postedAt({}), null);
+});
+
+Deno.test('fetchJobs passes the date window through to the provider', async () => {
+  const stub = stubFetch({ data: { jobs: [] } });
+  try {
+    await fetchJobs(criteria({ date_posted: '3days' }), 'key');
+    assertStringIncludes(stub.calls[0], 'date_posted=3days');
   } finally {
     stub.restore();
   }

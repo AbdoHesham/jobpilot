@@ -12,27 +12,28 @@ const STATUS_TABS: ReadonlyArray<{ value: JobStatus; label: string }> = [
   { value: 'dismissed', label: 'Dismissed' },
 ];
 
-/** Boards we call out by name; anything else falls into "Other". */
 const KNOWN_PLATFORMS = ['LinkedIn', 'Indeed', 'Glassdoor'] as const;
+const METER_SEGMENTS = 5;
 
 @Component({
   selector: 'app-jobs',
   imports: [RouterLink],
   template: `
-    <div class="top">
+    <header class="masthead">
       <div>
-        <h1>Jobs</h1>
+        <p class="eyebrow">Feed</p>
+        <h1>{{ searchProfiles.active()?.title || 'Jobs' }}</h1>
         @if (searchProfiles.active(); as active) {
-          <p class="muted sub">
-            {{ active.title }} · {{ active.location || 'Anywhere' }} ·
-            {{ active.country.toUpperCase() }}
+          <p class="muted route mono">
+            {{ active.location || 'Anywhere' }} · {{ active.country.toUpperCase() }} ·
+            {{ active.work_mode }} · {{ windowLabel(active.date_posted) }}
           </p>
         }
       </div>
       <button class="btn" type="button" [disabled]="busy() || !searchProfiles.active()" (click)="refresh()">
         {{ busy() ? 'Refreshing…' : 'Refresh' }}
       </button>
-    </div>
+    </header>
 
     @if (message(); as text) {
       <p class="banner" [class.ok]="messageIsOk()" role="status">{{ text }}</p>
@@ -40,250 +41,311 @@ const KNOWN_PLATFORMS = ['LinkedIn', 'Indeed', 'Glassdoor'] as const;
 
     @if (!searchProfiles.profiles().length) {
       <div class="card empty">
-        <h2>No search profiles yet</h2>
+        <h2>No searches yet</h2>
         <p class="muted">
-          Create a <a routerLink="/searches">search profile</a> first — the feed is built from it,
-          and you pick which one is active from the header.
+          Set up a <a routerLink="/searches">search</a> to start collecting postings, or type a job
+          title in the search box above.
         </p>
       </div>
     } @else {
-      <div class="tabs" role="tablist" aria-label="Job status">
-        @for (tab of statusTabs; track tab.value) {
-          <button
-            class="tab"
-            type="button"
-            role="tab"
-            [class.active]="status() === tab.value"
-            [attr.aria-selected]="status() === tab.value"
-            (click)="selectStatus(tab.value)"
-          >
-            {{ tab.label }}
-          </button>
-        }
-      </div>
+      <div class="filters">
+        <div class="tabs" role="tablist" aria-label="Status">
+          @for (tab of statusTabs; track tab.value) {
+            <button
+              class="tab"
+              type="button"
+              role="tab"
+              [class.on]="status() === tab.value"
+              [attr.aria-selected]="status() === tab.value"
+              (click)="status.set(tab.value)"
+            >
+              {{ tab.label }}
+            </button>
+          }
+        </div>
 
-      <div class="tabs platforms" role="tablist" aria-label="Job platform">
-        @for (tab of platformTabs(); track tab.value) {
-          <button
-            class="tab tab--platform"
-            type="button"
-            role="tab"
-            [class.active]="platform() === tab.value"
-            [attr.aria-selected]="platform() === tab.value"
-            (click)="platform.set(tab.value)"
-          >
-            {{ tab.label }} <span class="count">{{ tab.count }}</span>
-          </button>
-        }
+        <div class="tabs" role="tablist" aria-label="Platform">
+          @for (tab of platformTabs(); track tab.value) {
+            <button
+              class="tab tab--sm"
+              type="button"
+              role="tab"
+              [class.on]="platform() === tab.value"
+              [attr.aria-selected]="platform() === tab.value"
+              (click)="platform.set(tab.value)"
+            >
+              {{ tab.label }} <span class="mono count">{{ tab.count }}</span>
+            </button>
+          }
+        </div>
       </div>
 
       @if (jobService.isLoading()) {
-        <div class="card skeleton" aria-hidden="true"></div>
-        <div class="card skeleton" aria-hidden="true"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
       } @else if (!visibleJobs().length) {
         <div class="card empty">
-          <h2>Nothing here</h2>
+          <h2>Nothing on this board</h2>
           <p class="muted">
             @if (jobs().length) {
-              No {{ status() }} jobs on {{ platform() }}. Try another platform tab.
+              No {{ status() }} postings from {{ platform() }}. Try another platform.
             } @else {
-              Hit Refresh to pull the latest postings for this search.
+              Refresh to pull the latest postings for this search.
             }
           </p>
         </div>
       } @else {
-        <ul class="list">
-          @for (job of visibleJobs(); track job.id) {
-            <li class="card item">
-              <div class="head">
-                <div class="titles">
-                  <h2>{{ job.title }}</h2>
-                  <p class="muted meta">
-                    {{ job.company_name || 'Unknown company' }}
-                    @if (job.location) {
-                      · {{ job.location }}
-                    }
-                    @if (job.salary_text) {
-                      · {{ job.salary_text }}
-                    }
-                  </p>
-                </div>
-                <div class="badges">
-                  <span class="badge platform" [attr.data-platform]="job.publisher">
-                    {{ job.publisher || 'Unknown source' }}
-                  </span>
-                  <span class="badge score" [class.strong]="job.match_score >= 0.5">
-                    {{ percent(job.match_score) }}% match
-                  </span>
-                </div>
+        <ol class="board">
+          @for (job of visibleJobs(); track job.id; let i = $index) {
+            <li class="row card" [style.--i]="i">
+              <div class="gutter">
+                <span class="age mono">{{ age(job) }}</span>
+                <span class="meter" [attr.aria-label]="percent(job.match_score) + '% match'">
+                  @for (seg of segments; track seg) {
+                    <i class="seg" [class.lit]="seg <= filled(job.match_score)"></i>
+                  }
+                </span>
+                <span class="pct mono">{{ percent(job.match_score) }}%</span>
               </div>
 
-              @if (job.description) {
-                <p class="snippet">{{ snippet(job.description) }}</p>
-              }
-
-              <div class="actions">
-                @if (job.apply_url) {
-                  <a class="btn" [href]="job.apply_url" target="_blank" rel="noopener noreferrer" (click)="apply(job)">
-                    Apply on {{ job.publisher || 'site' }}
-                  </a>
-                } @else {
-                  <span class="muted meta">No application link provided.</span>
+              <div class="body">
+                <div class="head">
+                  <h2>{{ job.title }}</h2>
+                  <span class="tag" [attr.data-platform]="job.publisher">
+                    {{ job.publisher || 'Direct' }}
+                  </span>
+                </div>
+                <p class="muted meta mono">
+                  {{ job.company_name || 'Unknown company' }}
+                  @if (job.location) {
+                    · {{ job.location }}
+                  }
+                  @if (job.salary_text) {
+                    · {{ job.salary_text }}
+                  }
+                </p>
+                @if (job.description) {
+                  <p class="snippet">{{ snippet(job.description) }}</p>
                 }
-                @if (job.status !== 'saved') {
-                  <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'saved')">Save</button>
-                }
-                @if (job.status !== 'dismissed') {
-                  <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'dismissed')">Dismiss</button>
-                }
-                @if (job.status !== 'applied') {
-                  <button class="btn btn--ghost" type="button" (click)="apply(job)">Mark applied</button>
-                }
+                <div class="actions">
+                  @if (job.apply_url) {
+                    <a class="btn" [href]="job.apply_url" target="_blank" rel="noopener noreferrer" (click)="apply(job)">
+                      Apply on {{ job.publisher || 'site' }}
+                    </a>
+                  }
+                  @if (job.status !== 'saved') {
+                    <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'saved')">Save</button>
+                  }
+                  @if (job.status !== 'applied') {
+                    <button class="btn btn--ghost" type="button" (click)="apply(job)">Mark applied</button>
+                  }
+                  @if (job.status !== 'dismissed') {
+                    <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'dismissed')">Dismiss</button>
+                  }
+                </div>
               </div>
             </li>
           }
-        </ul>
+        </ol>
       }
     }
   `,
   styles: `
-    .top {
+    :host {
+      display: block;
+    }
+    .masthead {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--ink);
+      margin-bottom: 1rem;
     }
-    .top h1 {
+    .masthead h1 {
+      margin: 0.1rem 0 0.25rem;
+    }
+    .route {
       margin: 0;
+      font-size: 0.76rem;
+      text-transform: capitalize;
     }
-    .sub {
-      margin: 0.2rem 0 0;
-      font-size: 0.85rem;
+    .filters {
+      display: grid;
+      gap: 0.4rem;
+      margin-bottom: 1.1rem;
     }
     .tabs {
       display: flex;
-      gap: 0.35rem;
-      margin: 1rem 0 0;
+      gap: 0.3rem;
       flex-wrap: wrap;
-    }
-    .tabs.platforms {
-      margin: 0.5rem 0 1.25rem;
     }
     .tab {
       font: inherit;
-      font-size: 0.88rem;
-      padding: 0.35rem 0.8rem;
+      font-size: 0.86rem;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid transparent;
       border-radius: 999px;
-      border: 1px solid var(--border);
       background: transparent;
       color: var(--muted);
       cursor: pointer;
     }
-    .tab.active {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--accent);
+    .tab:hover {
+      color: var(--ink);
     }
-    .tab--platform {
-      font-size: 0.82rem;
+    .tab.on {
+      background: var(--signal-wash);
+      border-color: var(--signal);
+      color: var(--signal);
+      font-weight: 500;
+    }
+    .tab--sm {
+      font-size: 0.78rem;
     }
     .count {
-      opacity: 0.65;
-      margin-left: 0.15rem;
+      opacity: 0.7;
+      font-size: 0.72rem;
     }
-    .list {
+
+    .board {
       list-style: none;
       margin: 0;
       padding: 0;
       display: grid;
-      gap: 1rem;
+      gap: 0.6rem;
     }
-    .item {
-      padding: 1.25rem;
+    .row {
+      display: grid;
+      grid-template-columns: 5.5rem 1fr;
+      padding: 0;
+      overflow: hidden;
+      animation: flip-in 260ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+      animation-delay: calc(var(--i) * 28ms);
     }
-    .head {
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-      align-items: flex-start;
+    @keyframes flip-in {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
     }
-    .head h2 {
-      font-size: 1.05rem;
-      margin: 0;
+
+    /* The data gutter: age, match meter, percentage — the board's left column. */
+    .gutter {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 0.35rem;
+      padding: 1rem 0.5rem;
+      background: var(--rail);
+      border-right: 1px solid var(--rule);
     }
-    .meta {
-      font-size: 0.82rem;
-      margin: 0.2rem 0 0;
-    }
-    .badges {
-      display: flex;
-      gap: 0.4rem;
-      flex-shrink: 0;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .badge {
+    .age {
       font-size: 0.72rem;
-      padding: 0.12rem 0.5rem;
-      border-radius: 999px;
-      border: 1px solid var(--border);
       color: var(--muted);
       white-space: nowrap;
     }
-    .badge.platform[data-platform='LinkedIn'] {
+    .meter {
+      display: flex;
+      gap: 2px;
+    }
+    .seg {
+      width: 6px;
+      height: 12px;
+      border-radius: 1px;
+      background: var(--rule);
+    }
+    .seg.lit {
+      background: var(--signal);
+    }
+    .pct {
+      font-size: 0.72rem;
+      color: var(--ink);
+    }
+
+    .body {
+      padding: 0.9rem 1rem 1rem;
+      min-width: 0;
+    }
+    .head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .head h2 {
+      font-size: 1rem;
+      margin: 0;
+    }
+    .tag {
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.1rem 0.45rem;
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      color: var(--muted);
+    }
+    .tag[data-platform='LinkedIn'] {
       border-color: #0a66c2;
       color: #0a66c2;
     }
-    .badge.platform[data-platform='Indeed'] {
+    .tag[data-platform='Indeed'] {
       border-color: #2557a7;
       color: #2557a7;
     }
-    .badge.platform[data-platform='Glassdoor'] {
-      border-color: #0caa41;
-      color: #0caa41;
+    .tag[data-platform='Glassdoor'] {
+      border-color: #0b7d3e;
+      color: #0b7d3e;
     }
-    .badge.score.strong {
-      border-color: var(--success);
-      color: var(--success);
+    @media (prefers-color-scheme: dark) {
+      .tag[data-platform='LinkedIn'] {
+        border-color: #5aa9ee;
+        color: #5aa9ee;
+      }
+      .tag[data-platform='Indeed'] {
+        border-color: #7aa5e8;
+        color: #7aa5e8;
+      }
+      .tag[data-platform='Glassdoor'] {
+        border-color: #4ec98a;
+        color: #4ec98a;
+      }
+    }
+    .meta {
+      margin: 0.25rem 0 0;
+      font-size: 0.76rem;
     }
     .snippet {
-      margin: 0.85rem 0 0;
-      font-size: 0.9rem;
+      margin: 0.6rem 0 0;
+      font-size: 0.88rem;
       color: var(--muted);
     }
     .actions {
       display: flex;
-      gap: 0.5rem;
-      margin-top: 1rem;
+      gap: 0.4rem;
+      margin-top: 0.9rem;
       flex-wrap: wrap;
-      align-items: center;
     }
     .actions .btn {
-      text-decoration: none;
+      font-size: 0.84rem;
+      padding: 0.4rem 0.7rem;
     }
-    .empty {
-      padding: 2.5rem;
-      text-align: center;
-    }
-    .skeleton {
-      height: 110px;
-      margin-bottom: 1rem;
-      background: linear-gradient(90deg, var(--surface), var(--border), var(--surface));
-      background-size: 200% 100%;
-      animation: shimmer 1.2s linear infinite;
-    }
-    .banner.ok {
-      border-color: var(--success);
-      color: var(--success);
-    }
-    @keyframes shimmer {
-      to {
-        background-position: -200% 0;
+
+    @media (max-width: 620px) {
+      .row {
+        grid-template-columns: 1fr;
       }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .skeleton {
-        animation: none;
+      .gutter {
+        grid-auto-flow: column;
+        justify-content: start;
+        gap: 0.6rem;
+        padding: 0.5rem 1rem;
+        border-right: none;
+        border-bottom: 1px solid var(--rule);
       }
     }
   `,
@@ -294,6 +356,7 @@ export class Jobs {
   private readonly cvService = inject(CvService);
 
   protected readonly statusTabs = STATUS_TABS;
+  protected readonly segments = Array.from({ length: METER_SEGMENTS }, (_, i) => i + 1);
   protected readonly jobs = this.jobService.jobs;
   protected readonly status = signal<JobStatus>('new');
   protected readonly platform = signal<string>('All');
@@ -301,21 +364,19 @@ export class Jobs {
   protected readonly message = signal<string | null>(null);
   protected readonly messageIsOk = signal(false);
 
-  /** Counts come from the loaded page, so switching platform costs no request. */
   protected readonly platformTabs = computed(() => {
     const all = this.jobs();
-    const named = KNOWN_PLATFORMS.map((name) => ({
-      value: name as string,
-      label: name as string,
-      count: all.filter((job) => job.publisher === name).length,
-    }));
-    const other = all.filter(
-      (job) => !KNOWN_PLATFORMS.includes((job.publisher ?? '') as (typeof KNOWN_PLATFORMS)[number]),
-    ).length;
+    const isOther = (job: Job) =>
+      !KNOWN_PLATFORMS.includes((job.publisher ?? '') as (typeof KNOWN_PLATFORMS)[number]);
+    const other = all.filter(isOther).length;
 
     return [
       { value: 'All', label: 'All', count: all.length },
-      ...named,
+      ...KNOWN_PLATFORMS.map((name) => ({
+        value: name as string,
+        label: name as string,
+        count: all.filter((job) => job.publisher === name).length,
+      })),
       ...(other ? [{ value: 'Other', label: 'Other', count: other }] : []),
     ];
   });
@@ -324,18 +385,15 @@ export class Jobs {
     const chosen = this.platform();
     const all = this.jobs();
     if (chosen === 'All') return all;
-    if (chosen === 'Other') {
-      return all.filter(
-        (job) => !KNOWN_PLATFORMS.includes((job.publisher ?? '') as (typeof KNOWN_PLATFORMS)[number]),
-      );
-    }
+    const isKnown = (job: Job) =>
+      KNOWN_PLATFORMS.includes((job.publisher ?? '') as (typeof KNOWN_PLATFORMS)[number]);
+    if (chosen === 'Other') return all.filter((job) => !isKnown(job));
     return all.filter((job) => job.publisher === chosen);
   });
 
   constructor() {
     void this.cvService.reload().catch(() => undefined);
 
-    // Reloads whenever the header switches search, or the status tab changes.
     effect(() => {
       const profileId = this.searchProfiles.activeId();
       const status = this.status();
@@ -347,13 +405,36 @@ export class Jobs {
     return Math.round(score * 100);
   }
 
-  protected snippet(description: string): string {
-    const clean = description.replace(/\s+/g, ' ').trim();
-    return clean.length > 240 ? `${clean.slice(0, 240)}…` : clean;
+  /** How many of the meter's segments are lit, always at least one for a hit. */
+  protected filled(score: number): number {
+    if (score <= 0) return 0;
+    return Math.max(1, Math.round(score * METER_SEGMENTS));
   }
 
-  protected selectStatus(status: JobStatus): void {
-    this.status.set(status);
+  /** Compact age, e.g. 3h / 2d / 5w — falls back to fetch time when unknown. */
+  protected age(job: Job): string {
+    const iso = job.posted_at ?? job.fetched_at;
+    if (!iso) return '—';
+    const hours = (Date.now() - new Date(iso).getTime()) / 3_600_000;
+    if (!Number.isFinite(hours) || hours < 0) return '—';
+    if (hours < 1) return 'new';
+    if (hours < 24) return `${Math.floor(hours)}h`;
+    const days = Math.floor(hours / 24);
+    if (days < 14) return `${days}d`;
+    return `${Math.floor(days / 7)}w`;
+  }
+
+  protected windowLabel(value: string): string {
+    return (
+      { today: 'last 24 hours', '3days': 'last 3 days', week: 'last week', month: 'last month', all: 'any time' }[
+        value
+      ] ?? value
+    );
+  }
+
+  protected snippet(description: string): string {
+    const clean = description.replace(/\s+/g, ' ').trim();
+    return clean.length > 200 ? `${clean.slice(0, 200)}…` : clean;
   }
 
   protected async refresh(): Promise<void> {
@@ -380,11 +461,9 @@ export class Jobs {
     }
   }
 
-  /** Fires alongside the outbound link — the anchor still opens the posting. */
   protected async apply(job: Job): Promise<void> {
     try {
-      const cvId = this.cvService.cvs()[0]?.id ?? null;
-      await this.jobService.markApplied(job, cvId);
+      await this.jobService.markApplied(job, this.cvService.cvs()[0]?.id ?? null);
     } catch (error) {
       this.fail(error);
     }

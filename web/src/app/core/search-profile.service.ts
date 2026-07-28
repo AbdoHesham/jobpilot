@@ -38,12 +38,24 @@ export const COUNTRIES: ReadonlyArray<{ value: string; label: string }> = [
   { value: 'in', label: 'India' },
 ];
 
+export type DatePosted = 'all' | 'today' | '3days' | 'week' | 'month';
+
+/** How far back a search looks. Values map straight to the provider's vocabulary. */
+export const DATE_WINDOWS: ReadonlyArray<{ value: DatePosted; label: string }> = [
+  { value: 'today', label: 'Last 24 hours' },
+  { value: '3days', label: 'Last 3 days' },
+  { value: 'week', label: 'Last week' },
+  { value: 'month', label: 'Last month' },
+  { value: 'all', label: 'Any time' },
+];
+
 export interface SearchProfile {
   id: string;
   title: string;
   location: string | null;
   work_mode: WorkMode;
   country: string;
+  date_posted: DatePosted;
   min_salary: number | null;
   keywords: string[];
   cv_id: string | null;
@@ -56,13 +68,14 @@ export interface SearchProfileInput {
   location: string | null;
   work_mode: WorkMode;
   country: string;
+  date_posted: DatePosted;
   min_salary: number | null;
   keywords: string[];
   cv_id: string | null;
 }
 
 const COLUMNS =
-  'id, title, location, work_mode, country, min_salary, keywords, cv_id, active, created_at';
+  'id, title, location, work_mode, country, date_posted, min_salary, keywords, cv_id, active, created_at';
 
 @Service()
 export class SearchProfileService {
@@ -146,6 +159,7 @@ export class SearchProfileService {
       location: base?.location ?? null,
       work_mode: base?.work_mode ?? 'any',
       country: base?.country ?? 'us',
+      date_posted: base?.date_posted ?? 'week',
       min_salary: null,
       keywords: [],
       cv_id: base?.cv_id ?? null,
