@@ -6,6 +6,7 @@ interface SearchProfileRow {
   title: string;
   location: string | null;
   work_mode: SearchCriteria['work_mode'];
+  country: string;
   keywords: string[];
   cvs: { parsed_json: { skills?: string[] } | null } | null;
 }
@@ -25,7 +26,7 @@ Deno.serve(serve(async (req, db) => {
 
   let query = db
     .from('search_profiles')
-    .select('id, title, location, work_mode, keywords, cvs(parsed_json)')
+    .select('id, title, location, work_mode, country, keywords, cvs(parsed_json)')
     .eq('active', true);
   if (onlyProfileId) query = query.eq('id', onlyProfileId);
 
@@ -37,7 +38,12 @@ Deno.serve(serve(async (req, db) => {
 
   for (const profile of profiles as unknown as SearchProfileRow[]) {
     const jobs = await fetchJobs(
-      { title: profile.title, location: profile.location, work_mode: profile.work_mode },
+      {
+        title: profile.title,
+        location: profile.location,
+        work_mode: profile.work_mode,
+        country: profile.country,
+      },
       apiKey,
     );
 

@@ -11,11 +11,26 @@ export const WORK_MODES: ReadonlyArray<{ value: WorkMode; label: string }> = [
   { value: 'onsite', label: 'On-site' },
 ];
 
+/** Countries JSearch covers well; the code goes straight to its `country` param. */
+export const COUNTRIES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'us', label: 'United States' },
+  { value: 'gb', label: 'United Kingdom' },
+  { value: 'de', label: 'Germany' },
+  { value: 'nl', label: 'Netherlands' },
+  { value: 'ae', label: 'United Arab Emirates' },
+  { value: 'sa', label: 'Saudi Arabia' },
+  { value: 'eg', label: 'Egypt' },
+  { value: 'ca', label: 'Canada' },
+  { value: 'au', label: 'Australia' },
+  { value: 'in', label: 'India' },
+];
+
 export interface SearchProfile {
   id: string;
   title: string;
   location: string | null;
   work_mode: WorkMode;
+  country: string;
   min_salary: number | null;
   keywords: string[];
   cv_id: string | null;
@@ -27,12 +42,14 @@ export interface SearchProfileInput {
   title: string;
   location: string | null;
   work_mode: WorkMode;
+  country: string;
   min_salary: number | null;
   keywords: string[];
   cv_id: string | null;
 }
 
-const COLUMNS = 'id, title, location, work_mode, min_salary, keywords, cv_id, active, created_at';
+const COLUMNS =
+  'id, title, location, work_mode, country, min_salary, keywords, cv_id, active, created_at';
 
 @Service()
 export class SearchProfileService {

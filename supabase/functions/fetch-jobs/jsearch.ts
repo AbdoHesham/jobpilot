@@ -1,6 +1,9 @@
 /**
  * JSearch (RapidAPI) indexes Google for Jobs, which includes LinkedIn postings.
  * We read the aggregator, never LinkedIn itself — no scraping, no unofficial API.
+ *
+ * Endpoint is /search-v2: it wraps the results in `data.jobs` (v1 returned a bare
+ * `data` array) and requires a `country` code.
  */
 
 export interface FetchedJob {
@@ -18,6 +21,7 @@ export interface SearchCriteria {
   title: string;
   location: string | null;
   work_mode: 'remote' | 'hybrid' | 'onsite' | 'any';
+  country: string;
 }
 
 interface JSearchJob {
@@ -27,10 +31,12 @@ interface JSearchJob {
   job_publisher?: string;
   job_apply_link?: string;
   job_description?: string;
+  job_location?: string;
   job_city?: string;
   job_state?: string;
   job_country?: string;
   job_is_remote?: boolean;
+  job_salary_string?: string;
   job_min_salary?: number;
   job_max_salary?: number;
   job_salary_currency?: string;
@@ -46,11 +52,15 @@ export function buildQuery(criteria: SearchCriteria): string {
 
 export function formatLocation(job: JSearchJob): string | null {
   if (job.job_is_remote) return 'Remote';
+  // v2 supplies a pre-joined location; fall back to the parts for older payloads.
+  if (job.job_location) return job.job_location;
   const parts = [job.job_city, job.job_state, job.job_country].filter(Boolean);
   return parts.length ? parts.join(', ') : null;
 }
 
 export function formatSalary(job: JSearchJob): string | null {
+  if (job.job_salary_string) return job.job_salary_string;
+
   const { job_min_salary: min, job_max_salary: max, job_salary_currency: currency, job_salary_period: period } = job;
   if (!min && !max) return null;
   const money = min && max ? `${min}–${max}` : String(min ?? max);
@@ -76,11 +86,11 @@ export async function fetchJobs(
   apiKey: string,
   { linkedInOnly = true, pages = 1 } = {},
 ): Promise<FetchedJob[]> {
-  const url = new URL('https://jsearch.p.rapidapi.com/search');
+  const url = new URL('https://jsearch.p.rapidapi.com/search-v2');
   url.searchParams.set('query', buildQuery(criteria));
-  url.searchParams.set('page', '1');
+  url.searchParams.set('country', criteria.country || 'us');
   url.searchParams.set('num_pages', String(pages));
-  if (criteria.work_mode === 'remote') url.searchParams.set('remote_jobs_only', 'true');
+  url.searchParams.set('date_posted', 'all');
 
   const response = await fetch(url, {
     headers: {
@@ -94,8 +104,9 @@ export async function fetchJobs(
     throw new Error(`JSearch responded ${response.status}: ${body.slice(0, 200)}`);
   }
 
-  const payload = (await response.json()) as { data?: JSearchJob[] };
-  const jobs = payload.data ?? [];
+  const payload = (await response.json()) as { data?: { jobs?: JSearchJob[] } | JSearchJob[] };
+  // Tolerate both envelopes so a provider rollback doesn't blank the feed.
+  const jobs = Array.isArray(payload.data) ? payload.data : (payload.data?.jobs ?? []);
 
   return jobs
     .filter((job) => job.job_id && job.job_title)

@@ -3,6 +3,7 @@ import { form, FormField, FormRoot, required, submit } from '@angular/forms/sign
 
 import { CvService } from '../../core/cv.service';
 import {
+  COUNTRIES,
   SearchProfileService,
   WORK_MODES,
   type SearchProfile,
@@ -13,6 +14,7 @@ interface ProfileForm {
   title: string;
   location: string;
   workMode: WorkMode;
+  country: string;
   minSalary: string;
   keywords: string;
   cvId: string;
@@ -22,6 +24,7 @@ const EMPTY: ProfileForm = {
   title: '',
   location: '',
   workMode: 'any',
+  country: 'us',
   minSalary: '',
   keywords: '',
   cvId: '',
@@ -62,10 +65,10 @@ const EMPTY: ProfileForm = {
           <input id="location" type="text" placeholder="Berlin, or leave blank" [formField]="fields.location" />
         </div>
         <div class="field">
-          <label for="workMode">Work mode</label>
-          <select id="workMode" [formField]="fields.workMode">
-            @for (mode of workModes; track mode.value) {
-              <option [value]="mode.value">{{ mode.label }}</option>
+          <label for="country">Country</label>
+          <select id="country" [formField]="fields.country">
+            @for (country of countries; track country.value) {
+              <option [value]="country.value">{{ country.label }}</option>
             }
           </select>
         </div>
@@ -73,18 +76,28 @@ const EMPTY: ProfileForm = {
 
       <div class="row">
         <div class="field">
-          <label for="minSalary">Minimum salary</label>
-          <input id="minSalary" type="number" step="1000" placeholder="Optional" [formField]="fields.minSalary" />
-        </div>
-        <div class="field">
-          <label for="cvId">CV to use</label>
-          <select id="cvId" [formField]="fields.cvId">
-            <option value="">None</option>
-            @for (cv of cvService.cvs(); track cv.id) {
-              <option [value]="cv.id">{{ cv.label }}</option>
+          <label for="workMode">Work mode</label>
+          <select id="workMode" [formField]="fields.workMode">
+            @for (mode of workModes; track mode.value) {
+              <option [value]="mode.value">{{ mode.label }}</option>
             }
           </select>
         </div>
+        <div class="field">
+          <label for="minSalary">Minimum salary</label>
+          <input id="minSalary" type="number" step="1000" placeholder="Optional" [formField]="fields.minSalary" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="cvId">CV to use</label>
+        <select id="cvId" [formField]="fields.cvId">
+          <option value="">None</option>
+          @for (cv of cvService.cvs(); track cv.id) {
+            <option [value]="cv.id">{{ cv.label }}</option>
+          }
+        </select>
+        <p class="muted hint">Its parsed skills drive match scores; keywords are the fallback.</p>
       </div>
 
       <div class="field">
@@ -111,7 +124,8 @@ const EMPTY: ProfileForm = {
               <div>
                 <h2>{{ profile.title }}</h2>
                 <p class="muted meta">
-                  {{ profile.location || 'Anywhere' }} · {{ profile.work_mode }}
+                  {{ profile.location || 'Anywhere' }} · {{ profile.country.toUpperCase() }} ·
+                  {{ profile.work_mode }}
                   @if (profile.min_salary) {
                     · from {{ profile.min_salary }}
                   }
@@ -218,6 +232,7 @@ export class SearchProfiles {
   protected readonly cvService = inject(CvService);
 
   protected readonly workModes = WORK_MODES;
+  protected readonly countries = COUNTRIES;
   protected readonly profiles = this.service.profiles;
 
   protected readonly model = signal<ProfileForm>({ ...EMPTY });
@@ -263,6 +278,7 @@ export class SearchProfiles {
             title: value.title.trim(),
             location: value.location.trim() || null,
             work_mode: value.workMode,
+            country: value.country,
             min_salary: Number.isFinite(salary) ? salary : null,
             keywords: SearchProfileService.parseKeywords(value.keywords),
             cv_id: value.cvId || null,
