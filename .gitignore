@@ -1,0 +1,8 @@
+.env
+app/.dart_tool/
+app/build/
+app/.flutter-plugins*
+**/*.freezed.dart
+**/*.g.dart
+supabase/.branches/
+supabase/.temp/
