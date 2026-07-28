@@ -95,14 +95,11 @@ export class CvService {
    * works — the CV simply stays unparsed.
    */
   async requestParse(cvId: string): Promise<void> {
-    const { error } = await this.supabase.client.functions.invoke('parse-cv', {
-      body: { cv_id: cvId },
-    });
-    await this.reload();
-    if (error) {
-      throw new Error(
-        'Parsing is unavailable. Deploy the parse-cv function and set ANTHROPIC_API_KEY to enable it.',
-      );
+    try {
+      await this.supabase.invokeFunction('parse-cv', { cv_id: cvId });
+    } finally {
+      // Reload either way: a partial parse still updates the row.
+      await this.reload();
     }
   }
 

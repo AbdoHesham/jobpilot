@@ -75,15 +75,11 @@ export class JobService {
 
   /** Asks fetch-jobs to refresh the feed; needs RAPIDAPI_KEY on the server. */
   async refresh(searchProfileId?: string): Promise<{ found: number; inserted: number }> {
-    const { data, error } = await this.supabase.client.functions.invoke('fetch-jobs', {
-      body: searchProfileId ? { search_profile_id: searchProfileId } : {},
-    });
-    if (error) {
-      throw new Error(
-        'Refresh is unavailable. Deploy the fetch-jobs function and set RAPIDAPI_KEY to enable it.',
-      );
-    }
-    const results = (data?.results ?? []) as Array<{ found: number; inserted: number }>;
+    const data = await this.supabase.invokeFunction<{
+      results?: Array<{ found: number; inserted: number }>;
+    }>('fetch-jobs', searchProfileId ? { search_profile_id: searchProfileId } : {});
+
+    const results = data?.results ?? [];
     return results.reduce(
       (total, r) => ({ found: total.found + r.found, inserted: total.inserted + r.inserted }),
       { found: 0, inserted: 0 },

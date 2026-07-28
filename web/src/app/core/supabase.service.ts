@@ -1,5 +1,5 @@
 import { computed, Service, signal } from '@angular/core';
-import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 import { environment } from './environment';
 
@@ -59,5 +59,32 @@ export class SupabaseService {
 
   signOut() {
     return this.client.auth.signOut();
+  }
+
+  /**
+   * Invokes an Edge Function and surfaces the server's own error text.
+   *
+   * supabase-js reports a non-2xx as an opaque FunctionsHttpError with the body
+   * left unread, so without this every failure looks identical to the caller —
+   * a missing key, a bad provider response and a deployment problem would all
+   * produce the same useless message.
+   */
+  async invokeFunction<T>(name: string, body: Record<string, unknown> = {}): Promise<T> {
+    const { data, error } = await this.client.functions.invoke<T>(name, { body });
+    if (!error) return data as T;
+
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const payload = await error.context.json();
+        const message = payload?.error?.message ?? payload?.message;
+        if (message) throw new Error(message);
+      } catch (parseError) {
+        if (parseError instanceof Error && parseError.message) throw parseError;
+      }
+      throw new Error(`${name} failed (HTTP ${error.context.status}).`);
+    }
+
+    // Network failure or a timeout — the function was never reached.
+    throw new Error(`Could not reach ${name}. Is it deployed?`);
   }
 }
