@@ -1,9 +1,0 @@
-# Postgres columns are snake_case, Dart fields are camelCase — map once, globally,
-# instead of annotating every field with @JsonKey.
-targets:
-  $default:
-    builders:
-      json_serializable:
-        options:
-          field_rename: snake
-          explicit_to_json: true
