@@ -85,16 +85,38 @@ $$);
 
 ## 6. Run the app
 
+Only `lib/` and the pubspec are in version control, so generate the platform folders once:
+
 ```bash
 cd app
+flutter create . --platforms=web,android,ios --project-name jobpilot --org io.jobpilot
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs   # generates *.freezed.dart / *.g.dart
-flutter run \
+```
+
+The codegen step is required before the first build — the freezed models won't compile without it.
+
+### Chrome (fastest preview)
+
+Needs nothing beyond the Flutter SDK and Chrome — no Android SDK, JDK, or Visual Studio.
+
+```bash
+flutter run -d chrome --web-port=3000 \
   --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<anon key>
 ```
 
-The codegen step is required before the first build — the freezed models won't compile without it.
+Pin `--web-port` so the redirect URL stays stable, then set **Authentication → URL Configuration
+→ Site URL** to `http://localhost:3000` and add it to Redirect URLs. On web `oauthRedirect` is
+null and Supabase uses that Site URL; the `io.jobpilot://` scheme applies to mobile only.
+
+### Mobile
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<anon key>
+```
 
 Release builds:
 
