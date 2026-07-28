@@ -1,6 +1,8 @@
-import { inject, Service, signal } from '@angular/core';
+import { computed, inject, Service, signal } from '@angular/core';
 
 import { SupabaseService } from './supabase.service';
+
+const ACTIVE_KEY = 'jobpilot.active-search-profile';
 
 export type WorkMode = 'remote' | 'hybrid' | 'onsite' | 'any';
 
@@ -61,6 +63,28 @@ export class SearchProfileService {
   readonly profiles = this.items.asReadonly();
   readonly isLoading = this.loading.asReadonly();
 
+  /**
+   * The search the whole app is currently scoped to. Kept here rather than in a
+   * route param so switching it doesn't reset where you are, and persisted so
+   * you aren't re-picking your search on every visit.
+   */
+  private readonly selectedId = signal<string | null>(localStorage.getItem(ACTIVE_KEY));
+
+  /** Falls back to the first profile when the stored one was deleted elsewhere. */
+  readonly active = computed(() => {
+    const all = this.items();
+    if (!all.length) return null;
+    return all.find((p) => p.id === this.selectedId()) ?? all[0];
+  });
+
+  readonly activeId = computed(() => this.active()?.id ?? null);
+
+  setActive(id: string | null): void {
+    this.selectedId.set(id);
+    if (id) localStorage.setItem(ACTIVE_KEY, id);
+    else localStorage.removeItem(ACTIVE_KEY);
+  }
+
   async reload(): Promise<void> {
     this.loading.set(true);
     const { data, error } = await this.supabase.client
@@ -93,6 +117,7 @@ export class SearchProfileService {
   async remove(id: string): Promise<void> {
     const { error } = await this.supabase.client.from('search_profiles').delete().eq('id', id);
     if (error) throw new Error(error.message);
+    if (this.selectedId() === id) this.setActive(null);
     await this.reload();
   }
 

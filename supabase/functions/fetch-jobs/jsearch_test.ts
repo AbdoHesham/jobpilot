@@ -76,19 +76,20 @@ function stubFetch(payload: unknown, status = 200) {
   return { calls, restore: () => { globalThis.fetch = original; } };
 }
 
-Deno.test('fetchJobs reads the v2 data.jobs envelope', async () => {
+Deno.test('fetchJobs reads the v2 data.jobs envelope and keeps every platform', async () => {
   const stub = stubFetch({
     data: {
       jobs: [
         { job_id: 'a', job_title: 'Dev', job_publisher: 'LinkedIn' },
         { job_id: 'b', job_title: 'Dev', job_publisher: 'Indeed' },
+        { job_id: 'c', job_title: 'Dev', job_publisher: 'Glassdoor' },
       ],
       cursor: 'next',
     },
   });
   try {
     const jobs = await fetchJobs(criteria(), 'key');
-    assertEquals(jobs.map((j) => j.external_id), ['a']);
+    assertEquals(jobs.map((j) => j.publisher), ['LinkedIn', 'Indeed', 'Glassdoor']);
   } finally {
     stub.restore();
   }
@@ -126,37 +127,36 @@ Deno.test('fetchJobs falls back to us when no country is set', async () => {
   }
 });
 
-Deno.test('fetchJobs keeps only LinkedIn postings by default', async () => {
+Deno.test('fetchJobs drops entries missing an id or title', async () => {
+  const stub = stubFetch({
+    data: {
+      jobs: [
+        { job_id: 'a', job_title: 'Dev', job_publisher: 'Indeed' },
+        { job_id: 'd' }, // no title
+        { job_title: 'No id' },
+      ],
+    },
+  });
+  try {
+    assertEquals((await fetchJobs(criteria(), 'key')).map((j) => j.external_id), ['a']);
+  } finally {
+    stub.restore();
+  }
+});
+
+Deno.test('fetchJobs can still narrow to LinkedIn on request', async () => {
   const stub = stubFetch({
     data: {
       jobs: [
         { job_id: 'a', job_title: 'Dev', job_publisher: 'LinkedIn' },
         { job_id: 'b', job_title: 'Dev', job_publisher: 'Indeed' },
         { job_id: 'c', job_title: 'Dev', job_publisher: 'linkedin' },
-        { job_id: 'd' }, // no title — dropped
       ],
     },
   });
   try {
-    const jobs = await fetchJobs(criteria(), 'key');
+    const jobs = await fetchJobs(criteria(), 'key', { linkedInOnly: true });
     assertEquals(jobs.map((j) => j.external_id), ['a', 'c']);
-  } finally {
-    stub.restore();
-  }
-});
-
-Deno.test('fetchJobs can return every publisher', async () => {
-  const stub = stubFetch({
-    data: {
-      jobs: [
-        { job_id: 'a', job_title: 'Dev', job_publisher: 'LinkedIn' },
-        { job_id: 'b', job_title: 'Dev', job_publisher: 'Indeed' },
-      ],
-    },
-  });
-  try {
-    const jobs = await fetchJobs(criteria(), 'key', { linkedInOnly: false });
-    assertEquals(jobs.length, 2);
   } finally {
     stub.restore();
   }

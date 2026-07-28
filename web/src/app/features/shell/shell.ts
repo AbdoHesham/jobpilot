@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
+import { SearchProfileService } from '../../core/search-profile.service';
 import { SupabaseService } from '../../core/supabase.service';
 
 @Component({
@@ -17,6 +18,23 @@ import { SupabaseService } from '../../core/supabase.service';
         <a routerLink="/cvs" routerLinkActive="active">CVs</a>
       </nav>
       <div class="right">
+        @if (searchProfiles.profiles().length) {
+          <label class="sr-only" for="active-search">Active search</label>
+          <select
+            id="active-search"
+            class="switcher"
+            [value]="searchProfiles.activeId() ?? ''"
+            (change)="onSearchChange($event)"
+          >
+            @for (profile of searchProfiles.profiles(); track profile.id) {
+              <option [value]="profile.id">
+                {{ profile.title }}@if (!profile.active) { (paused) }
+              </option>
+            }
+          </select>
+        } @else {
+          <a class="btn btn--ghost" routerLink="/searches">Create a search</a>
+        }
         <span class="muted email">{{ email() }}</span>
         <button class="btn btn--ghost" type="button" (click)="signOut()">Sign out</button>
       </div>
@@ -76,6 +94,24 @@ import { SupabaseService } from '../../core/supabase.service';
     .email {
       font-size: 0.82rem;
     }
+    .switcher {
+      font: inherit;
+      font-size: 0.88rem;
+      padding: 0.35rem 0.5rem;
+      max-width: 15rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
     .wrap {
       max-width: 820px;
       margin: 0 auto;
@@ -91,8 +127,18 @@ import { SupabaseService } from '../../core/supabase.service';
 export class Shell {
   private readonly supabase = inject(SupabaseService);
   private readonly router = inject(Router);
+  protected readonly searchProfiles = inject(SearchProfileService);
 
   protected readonly email = () => this.supabase.session()?.user.email ?? '';
+
+  constructor() {
+    // Loaded once here so the switcher is populated on every page.
+    void this.searchProfiles.reload().catch(() => undefined);
+  }
+
+  protected onSearchChange(event: Event): void {
+    this.searchProfiles.setActive((event.target as HTMLSelectElement).value || null);
+  }
 
   protected async signOut(): Promise<void> {
     await this.supabase.signOut();

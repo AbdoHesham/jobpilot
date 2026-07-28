@@ -33,7 +33,7 @@ export class JobService {
   readonly jobs = this.items.asReadonly();
   readonly isLoading = this.loading.asReadonly();
 
-  async reload(status: JobStatus | 'all' = 'new'): Promise<void> {
+  async reload(status: JobStatus | 'all' = 'new', searchProfileId?: string | null): Promise<void> {
     this.loading.set(true);
     let query = this.supabase.client
       .from('jobs')
@@ -42,6 +42,7 @@ export class JobService {
       .order('fetched_at', { ascending: false })
       .limit(100);
     if (status !== 'all') query = query.eq('status', status);
+    if (searchProfileId) query = query.eq('search_profile_id', searchProfileId);
 
     const { data, error } = await query;
     this.loading.set(false);

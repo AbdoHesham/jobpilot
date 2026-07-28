@@ -84,7 +84,7 @@ export function matchScore(job: FetchedJob, terms: readonly string[]): number {
 export async function fetchJobs(
   criteria: SearchCriteria,
   apiKey: string,
-  { linkedInOnly = true, pages = 1 } = {},
+  { linkedInOnly = false, pages = 1 } = {},
 ): Promise<FetchedJob[]> {
   const url = new URL('https://jsearch.p.rapidapi.com/search-v2');
   url.searchParams.set('query', buildQuery(criteria));
