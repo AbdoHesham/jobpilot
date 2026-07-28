@@ -115,42 +115,23 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ProfileCard extends ConsumerWidget {
+class _ProfileCard extends StatelessWidget {
   const _ProfileCard({required this.profile});
 
   final Profile profile;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Card(
-        child: Column(
-          children: [
-            ListTile(
-              leading: CircleAvatar(
-                foregroundImage: profile.photoUrl == null ? null : NetworkImage(profile.photoUrl!),
-                child: const Icon(Icons.person_outline),
-              ),
-              title: Text(profile.fullName ?? 'Your profile'),
-              subtitle: Text(profile.headline ?? 'No headline yet'),
-              trailing: profile.linkedinConnected
-                  ? const Chip(label: Text('LinkedIn'), visualDensity: VisualDensity.compact)
-                  : null,
-            ),
-            const Divider(height: 1),
-            ListTile(
-              title: const Text('Daily send cap'),
-              subtitle: const Text('Maximum application emails per day'),
-              trailing: Text('${profile.dailySendCap}', style: Theme.of(context).textTheme.titleMedium),
-            ),
-            Slider(
-              value: profile.dailySendCap.toDouble(),
-              min: 1,
-              max: 50,
-              divisions: 49,
-              label: '${profile.dailySendCap}',
-              onChanged: (v) {}, // committed on release to avoid a write per pixel
-              onChangeEnd: (v) => ref.read(cvRepositoryProvider).setDailySendCap(v.round()),
-            ),
-          ],
+  Widget build(BuildContext context) => Card(
+        child: ListTile(
+          leading: CircleAvatar(
+            foregroundImage: profile.photoUrl == null ? null : NetworkImage(profile.photoUrl!),
+            child: const Icon(Icons.person_outline),
+          ),
+          title: Text(profile.fullName ?? 'Your profile'),
+          subtitle: Text(profile.headline ?? 'No headline yet'),
+          trailing: profile.linkedinConnected
+              ? const Chip(label: Text('LinkedIn'), visualDensity: VisualDensity.compact)
+              : null,
         ),
       );
 }

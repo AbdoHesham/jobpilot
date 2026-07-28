@@ -63,9 +63,4 @@ class CvRepository {
     await db.from('cvs').delete().eq('id', cv.id);
     _ref.invalidate(cvsProvider);
   }
-
-  Future<void> setDailySendCap(int cap) async {
-    await db.from('profiles').update({'daily_send_cap': cap}).eq('id', db.auth.currentUser!.id);
-    _ref.invalidate(profileProvider);
-  }
 }

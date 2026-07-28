@@ -1,9 +1,10 @@
 -- JobPilot schema. Everything is owner-only via RLS; the client never sees another user's rows.
+-- Applications are submitted by the user on the employer's own site — the app tracks them,
+-- it does not send anything, so there is no outbound email, quota, or queue here.
 
 create type work_mode as enum ('remote', 'hybrid', 'onsite', 'any');
 create type job_status as enum ('new', 'saved', 'dismissed', 'applied');
-create type application_channel as enum ('email', 'link');
-create type application_status as enum ('draft', 'queued', 'sent', 'replied', 'interview', 'rejected', 'offer');
+create type application_status as enum ('applied', 'replied', 'interview', 'rejected', 'offer');
 
 create table profiles (
   id uuid primary key references auth.users on delete cascade,
@@ -11,7 +12,6 @@ create table profiles (
   headline text,
   photo_url text,
   linkedin_connected boolean not null default false,
-  daily_send_cap int not null default 15 check (daily_send_cap between 1 and 200),
   created_at timestamptz not null default now()
 );
 
@@ -36,8 +36,6 @@ create table search_profiles (
   min_salary int,
   keywords text[] not null default '{}',
   cv_id uuid references cvs on delete set null,
-  auto_apply boolean not null default false,
-  review_before_send boolean not null default true,
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -46,15 +44,15 @@ create index on search_profiles (user_id);
 create table jobs (
   id uuid primary key default gen_random_uuid(),
   search_profile_id uuid not null references search_profiles on delete cascade,
-  source text not null,
+  source text not null,            -- fetcher that found it, e.g. 'jsearch'
+  publisher text,                  -- board it was posted on, e.g. 'LinkedIn'
   external_id text not null,
   title text not null,
   company_name text,
   location text,
   salary_text text,
   description text,
-  apply_url text,
-  contact_email text,
+  apply_url text,                  -- where the user goes to apply, in a new tab
   match_score numeric not null default 0,
   status job_status not null default 'new',
   fetched_at timestamptz not null default now(),
@@ -62,41 +60,19 @@ create table jobs (
 );
 create index on jobs (search_profile_id, status, match_score desc);
 
-create table companies (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users on delete cascade,
-  name text not null,
-  email text not null,
-  website text,
-  notes text,
-  created_at timestamptz not null default now()
-);
-create index on companies (user_id, created_at desc);
-
+-- One row per job the user actually applied to; status is advanced by hand.
 create table applications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
-  job_id uuid references jobs on delete set null,
-  company_id uuid references companies on delete set null,
+  job_id uuid not null references jobs on delete cascade,
   cv_id uuid references cvs on delete set null,
-  channel application_channel not null,
-  email_subject text,
-  email_body text,
-  status application_status not null default 'draft',
-  sent_at timestamptz,
+  status application_status not null default 'applied',
+  notes text,
+  applied_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
-  constraint one_target check ((job_id is null) <> (company_id is null))
+  unique (user_id, job_id)
 );
-create index on applications (user_id, status, created_at desc);
-
-create table send_log (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users on delete cascade,
-  application_id uuid not null references applications on delete cascade,
-  sent_at timestamptz not null default now()
-);
--- the daily-cap query: count rows for (user, today)
-create index on send_log (user_id, sent_at desc);
+create index on applications (user_id, status, applied_at desc);
 
 -- Auto-create a profile row on signup so the client never has to upsert one.
 create function handle_new_user() returns trigger language plpgsql security definer set search_path = '' as $$
@@ -114,23 +90,17 @@ alter table profiles        enable row level security;
 alter table cvs             enable row level security;
 alter table search_profiles enable row level security;
 alter table jobs            enable row level security;
-alter table companies       enable row level security;
 alter table applications    enable row level security;
-alter table send_log        enable row level security;
 
 create policy owner on profiles        for all using (id = auth.uid())      with check (id = auth.uid());
 create policy owner on cvs             for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy owner on search_profiles for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy owner on companies       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy owner on applications    for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- jobs have no user_id; ownership is inherited from the search profile.
 create policy owner on jobs for all
   using (exists (select 1 from search_profiles sp where sp.id = search_profile_id and sp.user_id = auth.uid()))
   with check (exists (select 1 from search_profiles sp where sp.id = search_profile_id and sp.user_id = auth.uid()));
-
--- send_log is written by the server only; users may read their own for the cap display.
-create policy owner_read on send_log for select using (user_id = auth.uid());
 
 -- ── Storage ──────────────────────────────────────────────────────────────────
 insert into storage.buckets (id, name, public) values ('cvs', 'cvs', false)

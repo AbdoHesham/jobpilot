@@ -11,7 +11,6 @@ class Profile with _$Profile {
     String? headline,
     String? photoUrl,
     @Default(false) bool linkedinConnected,
-    @Default(15) int dailySendCap,
   }) = _Profile;
 
   factory Profile.fromJson(Map<String, dynamic> json) => _$ProfileFromJson(json);

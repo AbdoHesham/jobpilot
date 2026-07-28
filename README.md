@@ -1,7 +1,11 @@
 # JobPilot
 
-AI-powered job application assistant. Flutter (iOS + Android) + Supabase (Postgres, Auth,
-Storage, Edge Functions) + Claude for CV parsing and email drafting.
+AI-powered job search assistant. Flutter web (mobile later) + Supabase (Postgres, Auth, Storage,
+Edge Functions) + Claude for CV parsing and match scoring.
+
+Jobs are pulled from the JSearch aggregator and filtered to LinkedIn-published postings. **The app
+never applies on your behalf** — you click through to the employer's own posting and apply there,
+then move the application along the tracker yourself. No scraping, no automation, no bulk email.
 
 **Phase 1 is implemented:** schema + RLS, auth (email/password and LinkedIn OIDC), CV upload
 to Storage, the `parse-cv` Edge Function, and a profile screen showing parsed skills.
@@ -68,8 +72,9 @@ enforces ownership — there is no separate permission check to keep in sync.
 
 ## 5. Scheduling cron jobs (phase 2+)
 
-`fetch-jobs` runs every 4 hours and `process-auto-apply-queue` hourly. Enable the extensions once,
-then schedule with `pg_cron` + `pg_net`:
+`fetch-jobs` refreshes the feed on a schedule. Enable the extensions once, then schedule with
+`pg_cron` + `pg_net` — mind the RapidAPI free tier (~200 requests/month), which a 4-hourly job
+burns through quickly if you have several active search profiles:
 
 ```sql
 create extension if not exists pg_cron;
