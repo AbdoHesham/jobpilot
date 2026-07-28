@@ -24,13 +24,22 @@ export class HttpError extends Error {
  * The client is bound to the caller's JWT, so RLS does the ownership checks for us.
  */
 export function serve(
-  handler: (req: Request, db: SupabaseClient, userId: string) => Promise<Response>,
+  handler: (req: Request, db: SupabaseClient, userId: string | null) => Promise<Response>,
+  { allowServiceRole = false } = {},
 ) {
   return async (req: Request): Promise<Response> => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
     try {
       const auth = req.headers.get('Authorization');
       if (!auth) throw new HttpError(401, 'missing Authorization header');
+
+      // Scheduled invocations present the service role key rather than a user
+      // JWT. That client bypasses RLS, so only opt in where it is intended.
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (allowServiceRole && serviceRoleKey && auth === `Bearer ${serviceRoleKey}`) {
+        const admin = createClient(Deno.env.get('SUPABASE_URL')!, serviceRoleKey);
+        return await handler(req, admin, null);
+      }
 
       const db = createClient(
         Deno.env.get('SUPABASE_URL')!,
