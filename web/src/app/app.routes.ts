@@ -16,11 +16,22 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/signup').then((m) => m.Signup),
   },
   {
-    path: 'jobs',
-    title: 'Jobs · JobPilot',
+    path: '',
     canActivate: [authGuard],
-    loadComponent: () => import('./features/jobs/jobs').then((m) => m.Jobs),
+    loadComponent: () => import('./features/shell/shell').then((m) => m.Shell),
+    children: [
+      {
+        path: 'jobs',
+        title: 'Jobs · JobPilot',
+        loadComponent: () => import('./features/jobs/jobs').then((m) => m.Jobs),
+      },
+      {
+        path: 'cvs',
+        title: 'CVs · JobPilot',
+        loadComponent: () => import('./features/cvs/cvs').then((m) => m.Cvs),
+      },
+      { path: '', pathMatch: 'full', redirectTo: 'jobs' },
+    ],
   },
-  { path: '', pathMatch: 'full', redirectTo: 'jobs' },
-  { path: '**', redirectTo: 'jobs' },
+  { path: '**', redirectTo: '' },
 ];
