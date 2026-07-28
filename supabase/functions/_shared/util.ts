@@ -1,8 +1,13 @@
 import { createClient, SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
+// supabase-js sends apikey and x-client-info alongside authorization; any header
+// missing from this list fails the preflight and the browser blocks the call
+// before it is sent — which surfaces as a network error, not an HTTP status.
 export const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-api-version',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 export function json(body: unknown, status = 200): Response {
