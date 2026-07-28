@@ -13,6 +13,7 @@ import { SupabaseService } from '../../core/supabase.service';
       <strong class="brand">JobPilot</strong>
       <nav aria-label="Main">
         <a routerLink="/jobs" routerLinkActive="active">Jobs</a>
+        <a routerLink="/searches" routerLinkActive="active">Searches</a>
         <a routerLink="/cvs" routerLinkActive="active">CVs</a>
       </nav>
       <div class="right">

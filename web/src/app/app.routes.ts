@@ -30,6 +30,12 @@ export const routes: Routes = [
         title: 'CVs · JobPilot',
         loadComponent: () => import('./features/cvs/cvs').then((m) => m.Cvs),
       },
+      {
+        path: 'searches',
+        title: 'Search profiles · JobPilot',
+        loadComponent: () =>
+          import('./features/search-profiles/search-profiles').then((m) => m.SearchProfiles),
+      },
       { path: '', pathMatch: 'full', redirectTo: 'jobs' },
     ],
   },
