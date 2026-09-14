@@ -8,6 +8,7 @@ interface SearchProfileRow {
   work_mode: SearchCriteria['work_mode'];
   date_posted: SearchCriteria['date_posted'];
   country: string;
+  min_salary: number | null;
   keywords: string[];
   cvs: { parsed_json: { skills?: string[] } | null } | null;
 }
@@ -27,9 +28,8 @@ Deno.serve(serve(async (req, db) => {
 
   let query = db
     .from('search_profiles')
-    .select('id, title, location, work_mode, country, date_posted, keywords, cvs(parsed_json)')
-    .eq('active', true);
-  if (onlyProfileId) query = query.eq('id', onlyProfileId);
+    .select('id, title, location, work_mode, country, date_posted, min_salary, keywords, cvs(parsed_json)');
+  query = onlyProfileId ? query.eq('id', onlyProfileId) : query.eq('active', true);
 
   const { data: profiles, error } = await query;
   if (error) throw new Error(error.message);
@@ -45,6 +45,7 @@ Deno.serve(serve(async (req, db) => {
         work_mode: profile.work_mode,
         country: profile.country,
         date_posted: profile.date_posted,
+        min_salary: profile.min_salary,
       },
       apiKey,
     );

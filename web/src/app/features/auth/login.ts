@@ -1,5 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
-import { email, form, FormField, FormRoot, minLength, required, submit } from '@angular/forms/signals';
+import {
+  email,
+  form,
+  FormField,
+  FormRoot,
+  minLength,
+  required,
+  submit,
+} from '@angular/forms/signals';
+import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 
 import { SupabaseService } from '../../core/supabase.service';
@@ -11,7 +21,7 @@ interface Credentials {
 
 @Component({
   selector: 'app-login',
-  imports: [FormField, FormRoot, RouterLink],
+  imports: [FormField, FormRoot, MatButtonModule, MatInputModule, RouterLink],
   template: `
     <main class="wrap">
       <div class="card panel">
@@ -26,6 +36,7 @@ interface Credentials {
           <div class="field">
             <label for="email">Email</label>
             <input
+              matInput
               id="email"
               type="email"
               autocomplete="email"
@@ -41,6 +52,7 @@ interface Credentials {
           <div class="field">
             <label for="password">Password</label>
             <input
+              matInput
               id="password"
               type="password"
               autocomplete="current-password"
@@ -53,12 +65,18 @@ interface Credentials {
             }
           </div>
 
-          <button class="btn btn--block" type="submit" [disabled]="busy()">
+          <button matButton="filled" class="btn btn--block" type="submit" [disabled]="busy()">
             {{ busy() ? 'Signing in…' : 'Sign in' }}
           </button>
         </form>
 
-        <button class="btn btn--ghost btn--block linkedin" type="button" [disabled]="busy()" (click)="signInWithLinkedIn()">
+        <button
+          matButton="outlined"
+          class="btn btn--ghost btn--block linkedin"
+          type="button"
+          [disabled]="busy()"
+          (click)="signInWithLinkedIn()"
+        >
           Continue with LinkedIn
         </button>
         <p class="muted note">LinkedIn is used only to import your name, headline and photo.</p>

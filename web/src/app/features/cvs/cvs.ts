@@ -1,9 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 
 import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
 
 @Component({
   selector: 'app-cvs',
+  imports: [MatButtonModule, MatCardModule, MatChipsModule, MatFormFieldModule, MatInputModule],
   template: `
     <h1>Your CVs</h1>
     <p class="muted">
@@ -14,38 +20,82 @@ import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
       <p class="banner" [class.ok]="messageIsOk()" role="status">{{ text }}</p>
     }
 
-    <div class="card upload">
-      <div class="field">
-        <label for="label">Label</label>
-        <input id="label" type="text" placeholder="e.g. Frontend CV" [value]="label()" (input)="onLabel($event)" />
-      </div>
-      <div class="field">
-        <label for="file">File</label>
-        <input id="file" type="file" [accept]="accepted" (change)="onFile($event)" [disabled]="busy()" />
-      </div>
-      <p class="muted hint">PDF or DOCX, up to 10 MB. Uploading starts as soon as you choose a file.</p>
-    </div>
+    <mat-card appearance="outlined" class="card upload">
+      <mat-card-content class="upload-content">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="label-field">
+          <mat-label>CV label</mat-label>
+          <input
+            matInput
+            id="label"
+            type="text"
+            placeholder="e.g. Frontend CV"
+            [value]="label()"
+            (input)="onLabel($event)"
+          />
+        </mat-form-field>
+        <div class="file-picker">
+          <input
+            #fileInput
+            class="file-input"
+            id="file"
+            type="file"
+            [accept]="accepted"
+            (change)="onFile($event)"
+            [disabled]="busy()"
+          />
+          <button
+            matButton="filled"
+            class="btn"
+            type="button"
+            [disabled]="busy()"
+            aria-describedby="file-help"
+            (click)="fileInput.click()"
+          >
+            {{ busy() ? 'Uploading…' : 'Choose PDF or DOCX' }}
+          </button>
+          <p class="muted hint" id="file-help">
+            Up to 10 MB. Uploading starts as soon as you choose a file.
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
 
     @if (cvService.isLoading() && !cvs().length) {
       <div class="card skeleton" aria-hidden="true"></div>
       <div class="card skeleton" aria-hidden="true"></div>
     } @else if (!cvs().length) {
-      <div class="card empty">
-        <h2>No CVs yet</h2>
-        <p class="muted">Upload your first one above.</p>
-      </div>
+      <mat-card appearance="outlined" class="card empty">
+        <mat-card-content>
+          <h2>No CVs yet</h2>
+          <p class="muted">Upload your first one above.</p>
+        </mat-card-content>
+      </mat-card>
     } @else {
-      <ul class="list">
+      <div class="list" role="list">
         @for (cv of cvs(); track cv.id) {
-          <li class="card item">
+          <mat-card appearance="outlined" class="card item" role="listitem">
             <div class="head">
               <div>
                 <h2>{{ cv.label }}</h2>
                 <p class="muted meta">{{ cv.file_name }}</p>
               </div>
               <div class="actions">
-                <button class="btn btn--ghost" type="button" (click)="download(cv)">Download</button>
-                <button class="btn btn--ghost" type="button" (click)="remove(cv)">Delete</button>
+                <button
+                  matButton="outlined"
+                  class="btn btn--ghost"
+                  type="button"
+                  (click)="download(cv)"
+                >
+                  Download
+                </button>
+                <button
+                  matButton="outlined"
+                  class="btn btn--ghost danger"
+                  type="button"
+                  (click)="remove(cv)"
+                >
+                  Delete
+                </button>
               </div>
             </div>
 
@@ -54,11 +104,11 @@ import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
                 <p class="summary">{{ parsed.summary }}</p>
               }
               @if (parsed.skills.length) {
-                <ul class="chips">
+                <mat-chip-set class="chips" aria-label="CV skills">
                   @for (skill of parsed.skills; track skill) {
-                    <li class="chip">{{ skill }}</li>
+                    <mat-chip>{{ skill }}</mat-chip>
                   }
-                </ul>
+                </mat-chip-set>
               }
               <p class="muted meta">
                 {{ parsed.years_experience }} years · {{ parsed.roles.length }} roles ·
@@ -70,20 +120,42 @@ import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
                   Not parsed. Skills extraction is optional — it needs the parse-cv function and an
                   Anthropic key.
                 </p>
-                <button class="btn btn--ghost" type="button" [disabled]="busy()" (click)="parse(cv)">
+                <button
+                  matButton="outlined"
+                  class="btn btn--ghost"
+                  type="button"
+                  [disabled]="busy()"
+                  (click)="parse(cv)"
+                >
                   Extract skills
                 </button>
               </div>
             }
-          </li>
+          </mat-card>
         }
-      </ul>
+      </div>
     }
   `,
   styles: `
     .upload {
-      padding: 1.25rem;
       margin-bottom: 1.5rem;
+    }
+    .upload-content {
+      display: grid;
+      gap: 1rem;
+      padding: 1.25rem;
+    }
+    .label-field {
+      width: 100%;
+    }
+    .file-picker {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .file-input {
+      display: none;
     }
     .hint {
       font-size: 0.8rem;
@@ -122,19 +194,7 @@ import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
       margin: 0.9rem 0 0;
     }
     .chips {
-      list-style: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-      padding: 0;
       margin: 0.9rem 0 0.6rem;
-    }
-    .chip {
-      font-size: 0.78rem;
-      padding: 0.15rem 0.55rem;
-      border: 1px solid var(--rule);
-      border-radius: 999px;
-      color: var(--muted);
     }
     .unparsed {
       display: flex;
@@ -163,6 +223,9 @@ import { ACCEPTED_CV_TYPES, CvService, type Cv } from '../../core/cv.service';
     .banner.ok {
       border-color: var(--ok);
       color: var(--ok);
+    }
+    .danger {
+      color: var(--danger);
     }
     @keyframes shimmer {
       to {

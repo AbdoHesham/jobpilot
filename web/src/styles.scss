@@ -1,23 +1,25 @@
+@use '@angular/material' as mat;
+
 /* JobPilot — instrument panel.
    Job hunting is high-volume triage, so the interface is a board you scan, not
-   a page you read. Navy ink, cool paper, and a single amber signal borrowed
+   a page you read. Navy ink, cool paper, and a single cobalt signal borrowed
    from cockpit instrument lighting. Data (times, percentages, counts) is set in
    mono so it reads as instrumentation and stays column-aligned. */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
-  --paper: #eceef3;
+  --paper: #f4f6fa;
   --card: #ffffff;
-  --ink: #121826;
-  --muted: #5b657a;
-  --rule: #d5dae4;
-  --rail: #e4e8ef;
+  --ink: #182033;
+  --muted: #657087;
+  --rule: #e2e6ef;
+  --rail: #edf0f6;
 
-  /* Amber carries every interactive affordance. AA on both surfaces. */
-  --signal: #b45309;
+  /* Cobalt carries every interactive affordance. AA on both surfaces. */
+  --signal: #3b5bfd;
   --signal-ink: #ffffff;
-  --signal-wash: #fdf3e6;
+  --signal-wash: #eef1ff;
 
   --ok: #15703f;
   --danger: #b3261e;
@@ -25,29 +27,60 @@
   --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
 
-  --radius: 6px;
+  --radius: 12px;
   --gutter: 1.25rem;
-  --shadow: 0 1px 2px rgb(18 24 38 / 5%), 0 2px 8px rgb(18 24 38 / 6%);
+  --shadow: 0 1px 2px rgb(18 24 38 / 4%), 0 12px 32px rgb(18 24 38 / 6%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #0b0f18;
-    --card: #131a26;
-    --ink: #e7ecf5;
-    --muted: #94a0b5;
-    --rule: #222c3c;
-    --rail: #1b2432;
+html {
+  @include mat.theme(
+    (
+      color: mat.$azure-palette,
+      typography: Archivo,
+      density: 0,
+    )
+  );
 
-    --signal: #f0a92e;
-    --signal-ink: #1a1204;
-    --signal-wash: #221a0c;
+  /* Keep Material on the same semantic palette as the rest of JobPilot.
+     These aliases are intentionally theme-agnostic: the app tokens below
+     change with data-theme, so overlays and components change with them. */
+  --mat-sys-primary: var(--signal);
+  --mat-sys-on-primary: var(--signal-ink);
+  --mat-sys-surface: var(--card);
+  --mat-sys-on-surface: var(--ink);
+  --mat-sys-on-surface-variant: var(--muted);
+  --mat-sys-surface-container: var(--rail);
+  --mat-sys-surface-container-low: var(--card);
+  --mat-sys-surface-container-high: var(--rail);
+  --mat-sys-surface-container-highest: var(--rail);
+  --mat-sys-outline: var(--rule);
+  --mat-sys-outline-variant: var(--rule);
+  --mat-sys-error: var(--danger);
+  --mat-sys-corner-extra-small: 8px;
+  --mat-sys-corner-small: 8px;
+  --mat-sys-corner-medium: var(--radius);
+  --mat-sys-corner-large: 16px;
+  --mat-sys-corner-extra-large: 18px;
+}
 
-    --ok: #4ec98a;
-    --danger: #f08a80;
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
-    --shadow: none;
-  }
+  --paper: #0b0f18;
+  --card: #131a26;
+  --ink: #e7ecf5;
+  --muted: #94a0b5;
+  --rule: #222c3c;
+  --rail: #1b2432;
+
+  --signal: #8da0ff;
+  --signal-ink: #101529;
+  --signal-wash: #20294d;
+
+  --ok: #4ec98a;
+  --danger: #f08a80;
+
+  --shadow: none;
 }
 
 * {
@@ -80,7 +113,8 @@ h3 {
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  letter-spacing: -0.04em;
 }
 
 h2 {
@@ -141,16 +175,34 @@ a {
 }
 
 input,
+input.mat-mdc-input-element,
 select,
-textarea {
+textarea,
+textarea.mat-mdc-input-element {
   width: 100%;
-  padding: 0.55rem 0.65rem;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
   font: inherit;
   font-size: 0.95rem;
   color: var(--ink);
   background: var(--card);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 72%, transparent);
+}
+
+input:focus,
+input.mat-mdc-input-element:focus,
+select:focus,
+textarea:focus,
+textarea.mat-mdc-input-element:focus {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-wash);
+  outline: none;
 }
 
 input:hover,
@@ -162,6 +214,86 @@ input[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
+/* Material controls share one 48px, outlined language. The native form rules
+   above still style standalone inputs; this reset prevents them from drawing
+   a second box inside mat-form-field. */
+.mat-mdc-form-field {
+  --mat-form-field-container-height: 48px;
+  --mat-form-field-container-vertical-padding: 12px;
+  --mat-form-field-outlined-container-shape: var(--radius);
+  --mat-form-field-outlined-outline-color: var(--rule);
+  --mat-form-field-outlined-hover-outline-color: var(--muted);
+  --mat-form-field-outlined-focus-outline-color: var(--signal);
+  --mat-form-field-outlined-label-text-color: var(--muted);
+  --mat-form-field-outlined-focus-label-text-color: var(--signal);
+  --mat-form-field-outlined-input-text-color: var(--ink);
+  --mat-form-field-outlined-input-text-placeholder-color: var(--muted);
+
+  width: 100%;
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.mat-mdc-form-field .mat-mdc-input-element {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.mat-mdc-select {
+  --mat-select-enabled-trigger-text-color: var(--ink);
+  --mat-select-placeholder-text-color: var(--muted);
+  --mat-select-enabled-arrow-color: var(--muted);
+  --mat-select-focused-arrow-color: var(--signal);
+}
+
+/* Select menus render in the document overlay, outside their component tree. */
+.mat-mdc-select-panel {
+  --mat-select-panel-background-color: var(--card);
+
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.mat-mdc-option {
+  --mat-option-label-text-color: var(--ink);
+  --mat-option-selected-state-label-text-color: var(--signal);
+  --mat-option-selected-state-layer-color: var(--signal-wash);
+  --mat-option-hover-state-layer-color: var(--rail);
+  --mat-option-focus-state-layer-color: var(--signal-wash);
+}
+
+.mat-mdc-card {
+  --mat-card-outlined-container-shape: var(--radius);
+  --mat-card-outlined-container-color: var(--card);
+  --mat-card-outlined-outline-color: var(--rule);
+  --mat-card-outlined-container-elevation: var(--shadow);
+}
+
+.mat-mdc-chip {
+  --mat-chip-container-shape-radius: 999px;
+  --mat-chip-label-text-color: var(--muted);
+  --mat-chip-outline-color: var(--rule);
+  --mat-chip-hover-state-layer-color: var(--rail);
+  --mat-chip-focus-state-layer-color: var(--signal-wash);
+}
+
+.mat-expansion-panel {
+  --mat-expansion-container-shape: var(--radius);
+  --mat-expansion-container-background-color: var(--card);
+  --mat-expansion-container-text-color: var(--ink);
+  --mat-expansion-header-text-color: var(--ink);
+  --mat-expansion-header-description-color: var(--muted);
+  --mat-expansion-header-indicator-color: var(--muted);
+  --mat-expansion-header-hover-state-layer-color: var(--rail);
+  --mat-expansion-header-focus-state-layer-color: var(--signal-wash);
+}
+
 .error {
   color: var(--danger);
   font-size: 0.8rem;
@@ -170,11 +302,20 @@ input[aria-invalid='true'] {
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 
 .btn {
+  --mat-button-filled-container-color: var(--signal);
+  --mat-button-filled-label-text-color: var(--signal-ink);
+  --mat-button-filled-container-shape: var(--radius);
+  --mat-button-filled-container-height: 40px;
+  --mat-button-outlined-container-shape: var(--radius);
+  --mat-button-outlined-container-height: 40px;
+  --mat-button-outlined-outline-color: var(--signal);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  padding: 0.55rem 0.95rem;
+  min-height: 40px;
+  padding: 0.58rem 1rem;
   font: inherit;
   font-size: 0.92rem;
   font-weight: 500;
@@ -184,11 +325,15 @@ input[aria-invalid='true'] {
   color: var(--signal-ink);
   cursor: pointer;
   text-decoration: none;
-  transition: filter 120ms ease;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease,
+    border-color 120ms ease;
 }
 
 .btn:hover:not([disabled]) {
   filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .btn[disabled] {
@@ -197,6 +342,9 @@ input[aria-invalid='true'] {
 }
 
 .btn--ghost {
+  --mat-button-outlined-label-text-color: var(--ink);
+  --mat-button-outlined-outline-color: var(--rule);
+
   background: transparent;
   color: var(--ink);
   border-color: var(--rule);
@@ -205,6 +353,7 @@ input[aria-invalid='true'] {
 .btn--ghost:hover:not([disabled]) {
   border-color: var(--muted);
   filter: none;
+  background: var(--paper);
 }
 
 .btn--block {

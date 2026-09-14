@@ -30,11 +30,13 @@ export class JobService {
 
   private readonly items = signal<Job[]>([]);
   private readonly loading = signal(false);
+  private reloadRequest = 0;
 
   readonly jobs = this.items.asReadonly();
   readonly isLoading = this.loading.asReadonly();
 
   async reload(status: JobStatus | 'all' = 'new', searchProfileId?: string | null): Promise<void> {
+    const request = ++this.reloadRequest;
     this.loading.set(true);
     let query = this.supabase.client
       .from('jobs')
@@ -46,6 +48,7 @@ export class JobService {
     if (searchProfileId) query = query.eq('search_profile_id', searchProfileId);
 
     const { data, error } = await query;
+    if (request !== this.reloadRequest) return;
     this.loading.set(false);
     if (error) throw new Error(error.message);
     this.items.set((data ?? []) as Job[]);

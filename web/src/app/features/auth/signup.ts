@@ -1,5 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
-import { email, form, FormField, FormRoot, minLength, required, submit } from '@angular/forms/signals';
+import {
+  email,
+  form,
+  FormField,
+  FormRoot,
+  minLength,
+  required,
+  submit,
+} from '@angular/forms/signals';
+import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 
 import { SupabaseService } from '../../core/supabase.service';
@@ -12,7 +22,7 @@ interface Registration {
 
 @Component({
   selector: 'app-signup',
-  imports: [FormField, FormRoot, RouterLink],
+  imports: [FormField, FormRoot, MatButtonModule, MatInputModule, RouterLink],
   template: `
     <main class="wrap">
       <div class="card panel">
@@ -32,6 +42,7 @@ interface Registration {
           <div class="field">
             <label for="fullName">Full name</label>
             <input
+              matInput
               id="fullName"
               type="text"
               autocomplete="name"
@@ -47,6 +58,7 @@ interface Registration {
           <div class="field">
             <label for="email">Email</label>
             <input
+              matInput
               id="email"
               type="email"
               autocomplete="email"
@@ -62,6 +74,7 @@ interface Registration {
           <div class="field">
             <label for="password">Password</label>
             <input
+              matInput
               id="password"
               type="password"
               autocomplete="new-password"
@@ -74,7 +87,7 @@ interface Registration {
             }
           </div>
 
-          <button class="btn btn--block" type="submit" [disabled]="busy()">
+          <button matButton="filled" class="btn btn--block" type="submit" [disabled]="busy()">
             {{ busy() ? 'Creating…' : 'Create account' }}
           </button>
         </form>

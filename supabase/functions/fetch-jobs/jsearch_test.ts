@@ -2,12 +2,13 @@
 import { assertEquals, assertRejects, assertStringIncludes } from 'jsr:@std/assert@1';
 import {
   buildQuery,
+  type FetchedJob,
   fetchJobs,
   formatLocation,
   formatSalary,
   matchScore,
+  meetsMinimumSalary,
   postedAt,
-  type FetchedJob,
   type SearchCriteria,
 } from './jsearch.ts';
 
@@ -17,6 +18,7 @@ const criteria = (over: Partial<SearchCriteria> = {}): SearchCriteria => ({
   work_mode: 'any',
   country: 'us',
   date_posted: 'week',
+  min_salary: null,
   ...over,
 });
 
@@ -33,12 +35,40 @@ const job = (over: Partial<FetchedJob> = {}): FetchedJob => ({
   ...over,
 });
 
-Deno.test('buildQuery folds location and remote into the query string', () => {
+Deno.test('buildQuery folds location and work mode into the query string', () => {
   assertEquals(buildQuery(criteria({ title: 'Angular Dev' })), 'Angular Dev');
   assertEquals(
-    buildQuery(criteria({ title: 'Angular Dev', location: 'Berlin', work_mode: 'remote' })),
+    buildQuery(
+      criteria({
+        title: 'Angular Dev',
+        location: 'Berlin',
+        work_mode: 'remote',
+      }),
+    ),
     'Angular Dev in Berlin remote',
   );
+  assertEquals(buildQuery(criteria({ work_mode: 'hybrid' })), 'Dev hybrid');
+  assertEquals(buildQuery(criteria({ work_mode: 'onsite' })), 'Dev on-site');
+});
+
+Deno.test('minimum salary keeps unknown pay and rejects only known ranges below the floor', () => {
+  assertEquals(meetsMinimumSalary({}, 100000), true);
+  assertEquals(
+    meetsMinimumSalary({ job_max_salary: 90000, job_salary_period: 'YEAR' }, 100000),
+    false,
+  );
+  assertEquals(
+    meetsMinimumSalary(
+      {
+        job_min_salary: 80000,
+        job_max_salary: 120000,
+        job_salary_period: 'YEAR',
+      },
+      100000,
+    ),
+    true,
+  );
+  assertEquals(meetsMinimumSalary({ job_min_salary: 60, job_salary_period: 'HOUR' }, 100000), true);
 });
 
 Deno.test('matchScore is the fraction of terms present in title + description', () => {
@@ -71,7 +101,12 @@ Deno.test('formatSalary prefers the provider string, else composes a range', () 
   assertEquals(formatSalary({ job_salary_string: '$120k – $150k a year' }), '$120k – $150k a year');
   assertEquals(formatSalary({}), null);
   assertEquals(
-    formatSalary({ job_min_salary: 60000, job_max_salary: 80000, job_salary_currency: 'EUR', job_salary_period: 'YEAR' }),
+    formatSalary({
+      job_min_salary: 60000,
+      job_max_salary: 80000,
+      job_salary_currency: 'EUR',
+      job_salary_period: 'YEAR',
+    }),
     'EUR 60000–80000 per year',
   );
   assertEquals(formatSalary({ job_min_salary: 60000 }), '60000');
@@ -84,7 +119,12 @@ function stubFetch(payload: unknown, status = 200) {
     calls.push(input.toString());
     return Promise.resolve(new Response(JSON.stringify(payload), { status }));
   };
-  return { calls, restore: () => { globalThis.fetch = original; } };
+  return {
+    calls,
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
 }
 
 Deno.test('fetchJobs reads the v2 data.jobs envelope and keeps every platform', async () => {
@@ -100,7 +140,10 @@ Deno.test('fetchJobs reads the v2 data.jobs envelope and keeps every platform', 
   });
   try {
     const jobs = await fetchJobs(criteria(), 'key');
-    assertEquals(jobs.map((j) => j.publisher), ['LinkedIn', 'Indeed', 'Glassdoor']);
+    assertEquals(
+      jobs.map((j) => j.publisher),
+      ['LinkedIn', 'Indeed', 'Glassdoor'],
+    );
   } finally {
     stub.restore();
   }
@@ -149,7 +192,10 @@ Deno.test('fetchJobs drops entries missing an id or title', async () => {
     },
   });
   try {
-    assertEquals((await fetchJobs(criteria(), 'key')).map((j) => j.external_id), ['a']);
+    assertEquals(
+      (await fetchJobs(criteria(), 'key')).map((j) => j.external_id),
+      ['a'],
+    );
   } finally {
     stub.restore();
   }
@@ -167,7 +213,10 @@ Deno.test('fetchJobs can still narrow to LinkedIn on request', async () => {
   });
   try {
     const jobs = await fetchJobs(criteria(), 'key', { linkedInOnly: true });
-    assertEquals(jobs.map((j) => j.external_id), ['a', 'c']);
+    assertEquals(
+      jobs.map((j) => j.external_id),
+      ['a', 'c'],
+    );
   } finally {
     stub.restore();
   }
@@ -183,9 +232,21 @@ Deno.test('fetchJobs surfaces an API error rather than returning nothing', async
 });
 
 Deno.test('postedAt prefers the ISO field, falls back to the unix timestamp', () => {
-  assertEquals(postedAt({ job_posted_at_datetime_utc: '2026-07-26T00:00:00.000Z' }), '2026-07-26T00:00:00.000Z');
-  assertEquals(postedAt({ job_posted_at_timestamp: 1785024000 }), new Date(1785024000000).toISOString());
-  assertEquals(postedAt({ job_posted_at_datetime_utc: 'not a date', job_posted_at_timestamp: 1785024000 }), new Date(1785024000000).toISOString());
+  assertEquals(
+    postedAt({ job_posted_at_datetime_utc: '2026-07-26T00:00:00.000Z' }),
+    '2026-07-26T00:00:00.000Z',
+  );
+  assertEquals(
+    postedAt({ job_posted_at_timestamp: 1785024000 }),
+    new Date(1785024000000).toISOString(),
+  );
+  assertEquals(
+    postedAt({
+      job_posted_at_datetime_utc: 'not a date',
+      job_posted_at_timestamp: 1785024000,
+    }),
+    new Date(1785024000000).toISOString(),
+  );
   assertEquals(postedAt({}), null);
 });
 

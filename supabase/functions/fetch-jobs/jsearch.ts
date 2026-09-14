@@ -26,6 +26,7 @@ export interface SearchCriteria {
   work_mode: 'remote' | 'hybrid' | 'onsite' | 'any';
   country: string;
   date_posted: DatePosted;
+  min_salary: number | null;
 }
 
 interface JSearchJob {
@@ -65,7 +66,32 @@ export function buildQuery(criteria: SearchCriteria): string {
   const parts = [criteria.title];
   if (criteria.location) parts.push(`in ${criteria.location}`);
   if (criteria.work_mode === 'remote') parts.push('remote');
+  if (criteria.work_mode === 'hybrid') parts.push('hybrid');
+  if (criteria.work_mode === 'onsite') parts.push('on-site');
   return parts.join(' ');
+}
+
+function annualSalary(value: number, period?: string): number {
+  switch (period?.toUpperCase()) {
+    case 'HOUR':
+      return value * 2080;
+    case 'DAY':
+      return value * 260;
+    case 'WEEK':
+      return value * 52;
+    case 'MONTH':
+      return value * 12;
+    default:
+      return value;
+  }
+}
+
+/** Keep salary-unknown jobs; reject only jobs whose known range is below the floor. */
+export function meetsMinimumSalary(job: JSearchJob, minimum: number | null): boolean {
+  if (!minimum || minimum <= 0) return true;
+  const offered = job.job_max_salary ?? job.job_min_salary;
+  if (offered == null) return true;
+  return annualSalary(offered, job.job_salary_period) >= minimum;
 }
 
 export function formatLocation(job: JSearchJob): string | null {
@@ -79,7 +105,12 @@ export function formatLocation(job: JSearchJob): string | null {
 export function formatSalary(job: JSearchJob): string | null {
   if (job.job_salary_string) return job.job_salary_string;
 
-  const { job_min_salary: min, job_max_salary: max, job_salary_currency: currency, job_salary_period: period } = job;
+  const {
+    job_min_salary: min,
+    job_max_salary: max,
+    job_salary_currency: currency,
+    job_salary_period: period,
+  } = job;
   if (!min && !max) return null;
   const money = min && max ? `${min}–${max}` : String(min ?? max);
   return [currency, money, period && `per ${period.toLowerCase()}`].filter(Boolean).join(' ');
@@ -122,13 +153,16 @@ export async function fetchJobs(
     throw new Error(`JSearch responded ${response.status}: ${body.slice(0, 200)}`);
   }
 
-  const payload = (await response.json()) as { data?: { jobs?: JSearchJob[] } | JSearchJob[] };
+  const payload = (await response.json()) as {
+    data?: { jobs?: JSearchJob[] } | JSearchJob[];
+  };
   // Tolerate both envelopes so a provider rollback doesn't blank the feed.
   const jobs = Array.isArray(payload.data) ? payload.data : (payload.data?.jobs ?? []);
 
   return jobs
     .filter((job) => job.job_id && job.job_title)
     .filter((job) => !linkedInOnly || (job.job_publisher ?? '').toLowerCase() === 'linkedin')
+    .filter((job) => meetsMinimumSalary(job, criteria.min_salary))
     .map((job) => ({
       external_id: job.job_id!,
       title: job.job_title!,

@@ -1,5 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { CvService } from '../../core/cv.service';
 import { JobService, type Job, type JobStatus } from '../../core/job.service';
@@ -17,7 +19,7 @@ const METER_SEGMENTS = 5;
 
 @Component({
   selector: 'app-jobs',
-  imports: [RouterLink],
+  imports: [MatButtonModule, RouterLink],
   template: `
     <header class="masthead">
       <div>
@@ -30,7 +32,13 @@ const METER_SEGMENTS = 5;
           </p>
         }
       </div>
-      <button class="btn" type="button" [disabled]="busy() || !searchProfiles.active()" (click)="refresh()">
+      <button
+        matButton="filled"
+        class="btn"
+        type="button"
+        [disabled]="busy() || !searchProfiles.active()"
+        (click)="refresh()"
+      >
         {{ busy() ? 'Refreshing…' : 'Refresh' }}
       </button>
     </header>
@@ -52,12 +60,13 @@ const METER_SEGMENTS = 5;
         <div class="tabs" role="tablist" aria-label="Status">
           @for (tab of statusTabs; track tab.value) {
             <button
+              matButton="text"
               class="tab"
               type="button"
               role="tab"
               [class.on]="status() === tab.value"
               [attr.aria-selected]="status() === tab.value"
-              (click)="status.set(tab.value)"
+              (click)="selectStatus(tab.value)"
             >
               {{ tab.label }}
             </button>
@@ -67,6 +76,7 @@ const METER_SEGMENTS = 5;
         <div class="tabs" role="tablist" aria-label="Platform">
           @for (tab of platformTabs(); track tab.value) {
             <button
+              matButton="text"
               class="tab tab--sm"
               type="button"
               role="tab"
@@ -130,18 +140,46 @@ const METER_SEGMENTS = 5;
                 }
                 <div class="actions">
                   @if (job.apply_url) {
-                    <a class="btn" [href]="job.apply_url" target="_blank" rel="noopener noreferrer" (click)="apply(job)">
+                    <a
+                      matButton="filled"
+                      class="btn"
+                      [href]="job.apply_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      (click)="apply(job)"
+                    >
                       Apply on {{ job.publisher || 'site' }}
                     </a>
                   }
                   @if (job.status !== 'saved') {
-                    <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'saved')">Save</button>
+                    <button
+                      matButton="outlined"
+                      class="btn btn--ghost"
+                      type="button"
+                      (click)="setStatus(job, 'saved')"
+                    >
+                      Save
+                    </button>
                   }
                   @if (job.status !== 'applied') {
-                    <button class="btn btn--ghost" type="button" (click)="apply(job)">Mark applied</button>
+                    <button
+                      matButton="outlined"
+                      class="btn btn--ghost"
+                      type="button"
+                      (click)="apply(job)"
+                    >
+                      Mark applied
+                    </button>
                   }
                   @if (job.status !== 'dismissed') {
-                    <button class="btn btn--ghost" type="button" (click)="setStatus(job, 'dismissed')">Dismiss</button>
+                    <button
+                      matButton="outlined"
+                      class="btn btn--ghost"
+                      type="button"
+                      (click)="setStatus(job, 'dismissed')"
+                    >
+                      Dismiss
+                    </button>
                   }
                 </div>
               </div>
@@ -183,6 +221,10 @@ const METER_SEGMENTS = 5;
       flex-wrap: wrap;
     }
     .tab {
+      --mat-button-text-label-text-color: var(--muted);
+      --mat-button-text-container-height: auto;
+      --mat-button-text-container-shape: 999px;
+
       font: inherit;
       font-size: 0.86rem;
       padding: 0.3rem 0.7rem;
@@ -196,6 +238,8 @@ const METER_SEGMENTS = 5;
       color: var(--ink);
     }
     .tab.on {
+      --mat-button-text-label-text-color: var(--signal);
+
       background: var(--signal-wash);
       border-color: var(--signal);
       color: var(--signal);
@@ -210,6 +254,7 @@ const METER_SEGMENTS = 5;
     }
 
     .board {
+      min-width: 0;
       list-style: none;
       margin: 0;
       padding: 0;
@@ -217,6 +262,7 @@ const METER_SEGMENTS = 5;
       gap: 0.6rem;
     }
     .row {
+      min-width: 0;
       display: grid;
       grid-template-columns: 5.5rem 1fr;
       padding: 0;
@@ -275,8 +321,10 @@ const METER_SEGMENTS = 5;
       gap: 0.75rem;
     }
     .head h2 {
+      min-width: 0;
       font-size: 1rem;
       margin: 0;
+      overflow-wrap: anywhere;
     }
     .tag {
       flex-shrink: 0;
@@ -301,19 +349,17 @@ const METER_SEGMENTS = 5;
       border-color: #0b7d3e;
       color: #0b7d3e;
     }
-    @media (prefers-color-scheme: dark) {
-      .tag[data-platform='LinkedIn'] {
-        border-color: #5aa9ee;
-        color: #5aa9ee;
-      }
-      .tag[data-platform='Indeed'] {
-        border-color: #7aa5e8;
-        color: #7aa5e8;
-      }
-      .tag[data-platform='Glassdoor'] {
-        border-color: #4ec98a;
-        color: #4ec98a;
-      }
+    :host-context(html[data-theme='dark']) .tag[data-platform='LinkedIn'] {
+      border-color: #5aa9ee;
+      color: #5aa9ee;
+    }
+    :host-context(html[data-theme='dark']) .tag[data-platform='Indeed'] {
+      border-color: #7aa5e8;
+      color: #7aa5e8;
+    }
+    :host-context(html[data-theme='dark']) .tag[data-platform='Glassdoor'] {
+      border-color: #4ec98a;
+      color: #4ec98a;
     }
     .meta {
       margin: 0.25rem 0 0;
@@ -354,15 +400,26 @@ export class Jobs {
   protected readonly jobService = inject(JobService);
   protected readonly searchProfiles = inject(SearchProfileService);
   private readonly cvService = inject(CvService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
 
   protected readonly statusTabs = STATUS_TABS;
   protected readonly segments = Array.from({ length: METER_SEGMENTS }, (_, i) => i + 1);
   protected readonly jobs = this.jobService.jobs;
-  protected readonly status = signal<JobStatus>('new');
+  protected readonly status = computed<JobStatus>(() => {
+    const value = this.queryParams().get('status');
+    return STATUS_TABS.some((tab) => tab.value === value) ? (value as JobStatus) : 'new';
+  });
+  private readonly searchRequest = computed(() => this.queryParams().get('search'));
   protected readonly platform = signal<string>('All');
   protected readonly busy = signal(false);
   protected readonly message = signal<string | null>(null);
   protected readonly messageIsOk = signal(false);
+  private handledSearchRequest: string | null = null;
+  private loadRevision = 0;
 
   protected readonly platformTabs = computed(() => {
     const all = this.jobs();
@@ -397,7 +454,20 @@ export class Jobs {
     effect(() => {
       const profileId = this.searchProfiles.activeId();
       const status = this.status();
-      void this.jobService.reload(status, profileId).catch((error) => this.fail(error));
+      const searchRequest = this.searchRequest();
+      const ensureResults = !!searchRequest && searchRequest !== this.handledSearchRequest;
+      if (ensureResults) this.handledSearchRequest = searchRequest;
+      void this.loadJobs(profileId, status, ensureResults);
+    });
+  }
+
+  protected selectStatus(status: JobStatus): void {
+    this.platform.set('All');
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { status, search: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
     });
   }
 
@@ -426,9 +496,13 @@ export class Jobs {
 
   protected windowLabel(value: string): string {
     return (
-      { today: 'last 24 hours', '3days': 'last 3 days', week: 'last week', month: 'last month', all: 'any time' }[
-        value
-      ] ?? value
+      {
+        today: 'last 24 hours',
+        '3days': 'last 3 days',
+        week: 'last week',
+        month: 'last month',
+        all: 'any time',
+      }[value] ?? value
     );
   }
 
@@ -450,6 +524,35 @@ export class Jobs {
       this.fail(error);
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  private async loadJobs(
+    profileId: string | null,
+    status: JobStatus,
+    ensureResults: boolean,
+  ): Promise<void> {
+    const revision = ++this.loadRevision;
+    if (ensureResults) this.message.set(null);
+
+    try {
+      await this.jobService.reload(status, profileId);
+      if (revision !== this.loadRevision) return;
+
+      // Explicit searches reuse cached jobs. Only an empty New board spends a
+      // provider request, so normal navigation does not consume API quota.
+      if (ensureResults && profileId && status === 'new' && !this.jobs().length) {
+        this.busy.set(true);
+        const { found, inserted } = await this.jobService.refresh(profileId);
+        if (revision !== this.loadRevision) return;
+        await this.jobService.reload(status, profileId);
+        if (revision !== this.loadRevision) return;
+        this.ok(`Found ${found} postings, ${inserted} new.`);
+      }
+    } catch (error) {
+      if (revision === this.loadRevision) this.fail(error);
+    } finally {
+      if (revision === this.loadRevision) this.busy.set(false);
     }
   }
 

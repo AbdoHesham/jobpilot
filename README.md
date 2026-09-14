@@ -59,12 +59,17 @@ don't set them yourself.
 
 ```bash
 supabase functions deploy parse-cv
+supabase functions deploy report-issue
 supabase functions serve parse-cv        # local, with hot reload
 deno test supabase/functions/parse-cv/   # unit tests for the defensive JSON parsing
 ```
 
 `parse-cv` authenticates the caller's JWT and talks to Postgres/Storage **as that user**, so RLS
 enforces ownership — there is no separate permission check to keep in sync.
+
+`report-issue` creates GitHub issues from the in-app feedback dialog. Set `GITHUB_TOKEN` to a
+fine-grained token with **Issues: write** access. Optional screenshots are stored privately in
+Supabase and linked with a URL that expires after 30 days.
 
 ## 5. Scheduling cron jobs
 

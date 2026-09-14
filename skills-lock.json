@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "codex-delegate": {
+      "source": "amElnagdy/delegate-skills",
+      "sourceType": "github",
+      "skillPath": "skills/codex-delegate/SKILL.md",
+      "computedHash": "aeeded2cd88cfdf88bfa849127e249006fca0e1cd46d3a6bdc85174d703e2a08"
+    }
+  }
+}

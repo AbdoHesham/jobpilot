@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 
-import { JobService } from '../../core/job.service';
 import { SearchProfileService } from '../../core/search-profile.service';
 
 /**
@@ -11,10 +12,12 @@ import { SearchProfileService } from '../../core/search-profile.service';
  */
 @Component({
   selector: 'app-quick-search',
+  imports: [MatButtonModule, MatInputModule],
   template: `
     <form class="quick" role="search" (submit)="go($event)">
       <label class="sr-only" for="quick-search">Search job titles</label>
       <input
+        matInput
         id="quick-search"
         type="search"
         name="q"
@@ -30,12 +33,18 @@ import { SearchProfileService } from '../../core/search-profile.service';
           <option [value]="suggestion"></option>
         }
       </datalist>
-      <button class="btn" type="submit" [disabled]="busy() || !term().trim()">
+      <button matButton="filled" class="btn" type="submit" [disabled]="busy() || !term().trim()">
         {{ busy() ? '…' : 'Search' }}
       </button>
     </form>
+    @if (error(); as message) {
+      <p class="quick-error" role="alert">{{ message }}</p>
+    }
   `,
   styles: `
+    :host {
+      display: block;
+    }
     .quick {
       display: flex;
       gap: 0.4rem;
@@ -55,6 +64,11 @@ import { SearchProfileService } from '../../core/search-profile.service';
       padding: 0.35rem 0.8rem;
       font-size: 0.88rem;
     }
+    .quick-error {
+      margin: 0.25rem 0 0;
+      color: var(--danger);
+      font-size: 0.76rem;
+    }
     .sr-only {
       position: absolute;
       width: 1px;
@@ -72,11 +86,11 @@ import { SearchProfileService } from '../../core/search-profile.service';
 })
 export class QuickSearch {
   protected readonly searchProfiles = inject(SearchProfileService);
-  private readonly jobService = inject(JobService);
   private readonly router = inject(Router);
 
   protected readonly term = signal('');
   protected readonly busy = signal(false);
+  protected readonly error = signal<string | null>(null);
 
   protected async go(event: Event): Promise<void> {
     event.preventDefault();
@@ -84,19 +98,17 @@ export class QuickSearch {
     if (!query || this.busy()) return;
 
     this.busy.set(true);
+    this.error.set(null);
     try {
-      const { profile, created } = await this.searchProfiles.findOrCreateByTitle(query);
+      const { profile } = await this.searchProfiles.findOrCreateByTitle(query);
       this.searchProfiles.rememberTerm(query);
       this.searchProfiles.setActive(profile.id);
-      await this.router.navigate(['/jobs']);
-
-      // A brand-new search has nothing stored yet, so fetch once. Switching to a
-      // search you already have just shows what's there — no quota spent.
-      if (created) await this.jobService.refresh(profile.id);
-      await this.jobService.reload('new', profile.id);
+      await this.router.navigate(['/jobs'], {
+        queryParams: { status: 'new', search: crypto.randomUUID() },
+      });
       this.term.set('');
-    } catch {
-      // The jobs page surfaces failures; keep what was typed so it can be retried.
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : String(error));
     } finally {
       this.busy.set(false);
     }
